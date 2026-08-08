@@ -35,7 +35,7 @@ export default function Categories() {
   const [name, setName] = useState("")
   const [type, setType] = useState<TransactionType>("expense")
 
-  const { data: categories, isLoading } = useQuery({
+  const { data: categories, isLoading, isError } = useQuery({
     queryKey: ["categories"],
     queryFn: api.categories.list,
   })
@@ -128,6 +128,8 @@ export default function Categories() {
         <CardContent>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : isError ? (
+            <p className="text-sm text-destructive">Failed to load categories.</p>
           ) : categories && categories.length > 0 ? (
             <ul className="divide-y divide-border">
               {categories.map((category: Category) => (

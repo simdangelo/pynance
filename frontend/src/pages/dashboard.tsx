@@ -25,17 +25,17 @@ export default function Dashboard() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
 
-  const { data: summary } = useQuery({
+  const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["summary", year, month],
     queryFn: () => api.transactions.summary(year, month),
   })
 
-  const { data: spending } = useQuery({
+  const { data: spending, isError: spendingError } = useQuery({
     queryKey: ["spending", year, month],
     queryFn: () => api.transactions.spendingByCategory("expense", year, month),
   })
 
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions, isLoading, isError } = useQuery({
     queryKey: ["transactions"],
     queryFn: api.transactions.list,
   })
@@ -73,10 +73,14 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Income</CardTitle>
           </CardHeader>
           <CardContent>
-            <Money
-              value={summary?.income ?? "0"}
-              className="text-2xl font-semibold text-emerald-600"
-            />
+            {summaryLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <Money
+                value={summary?.income ?? "0"}
+                className="text-2xl font-semibold text-emerald-600"
+              />
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -84,10 +88,14 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Expense</CardTitle>
           </CardHeader>
           <CardContent>
-            <Money
-              value={summary?.expense ?? "0"}
-              className="text-2xl font-semibold text-rose-600"
-            />
+            {summaryLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <Money
+                value={summary?.expense ?? "0"}
+                className="text-2xl font-semibold text-rose-600"
+              />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -97,7 +105,9 @@ export default function Dashboard() {
           <CardTitle className="text-base">Spending by category</CardTitle>
         </CardHeader>
         <CardContent>
-          {chartData.length === 0 ? (
+          {spendingError ? (
+            <p className="text-sm text-destructive">Failed to load spending.</p>
+          ) : chartData.length === 0 ? (
             <p className="text-sm text-muted-foreground">No spending this month.</p>
           ) : (
             <ChartContainer
@@ -119,7 +129,12 @@ export default function Dashboard() {
                   tick={{ className: "font-numeric text-xs" }}
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="amount" fill="var(--color-rose-600, #e11d48)" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="amount"
+                  fill="var(--color-rose-600, #e11d48)"
+                  radius={[4, 4, 0, 0]}
+                  isAnimationActive={false}
+                />
               </BarChart>
             </ChartContainer>
           )}
@@ -133,6 +148,8 @@ export default function Dashboard() {
         <CardContent>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : isError ? (
+            <p className="text-sm text-destructive">Failed to load transactions.</p>
           ) : recent.length === 0 ? (
             <p className="text-sm text-muted-foreground">No transactions this month.</p>
           ) : (

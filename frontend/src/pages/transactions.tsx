@@ -40,12 +40,12 @@ export default function Transactions() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Transaction | null>(null)
 
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions, isLoading, isError } = useQuery({
     queryKey: ["transactions"],
     queryFn: api.transactions.list,
   })
 
-  const { data: categories } = useQuery({
+  const { data: categories, isError: categoriesError } = useQuery({
     queryKey: ["categories"],
     queryFn: api.categories.list,
   })
@@ -97,6 +97,8 @@ export default function Transactions() {
         <CardContent>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : isError || categoriesError ? (
+            <p className="text-sm text-destructive">Failed to load transactions.</p>
           ) : monthTransactions.length === 0 ? (
             <p className="text-sm text-muted-foreground">No transactions this month.</p>
           ) : (

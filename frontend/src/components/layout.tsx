@@ -12,7 +12,7 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <header className="border-b border-border bg-background">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+        <div className="mx-auto flex h-14 max-w-5xl flex-wrap items-center justify-between gap-2 px-4">
           <span className="font-semibold tracking-tight">Pynance</span>
           <nav className="flex items-center gap-1">
             {navItems.map((item) => (

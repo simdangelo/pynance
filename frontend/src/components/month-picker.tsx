@@ -47,7 +47,7 @@ export function MonthPicker({ year, month, onChange }: MonthPickerProps) {
       </Button>
       <Select value={String(month)} onValueChange={(v) => onChange(year, Number(v))}>
         <SelectTrigger className="w-[160px]">
-          <SelectValue />
+          <SelectValue>{MONTHS[month - 1]}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {MONTHS.map((name, i) => (

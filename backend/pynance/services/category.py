@@ -1,9 +1,14 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from pynance.models.category import Category
 from pynance.schemas.category import CategoryCreate
-from pynance.services.exceptions import DuplicateCategoryError
+from pynance.services.exceptions import (
+    CategoryHasTransactionsError,
+    CategoryNotFoundError,
+    DuplicateCategoryError,
+)
 
 
 def create_category(db: Session, category: CategoryCreate) -> Category:
@@ -22,3 +27,20 @@ def create_category(db: Session, category: CategoryCreate) -> Category:
 
 def get_categories(db: Session) -> list[Category]:
     return list(db.execute(select(Category)).scalars().all())
+
+
+def delete_category(db: Session, category_id: int) -> Category:
+    category = db.execute(select(Category).where(Category.id == category_id)).scalar_one_or_none()
+    if category is None:
+        raise CategoryNotFoundError(f"Category with id '{category_id}' doesn't exist")
+
+    db.delete(category)
+    try:
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise CategoryHasTransactionsError(
+            f"Category with id '{category_id}' is associated to one or more transactions."
+            " You can't delete it"
+        ) from e
+    return category

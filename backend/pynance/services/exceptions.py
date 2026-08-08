@@ -12,3 +12,7 @@ class TransactionTypeMismatchError(Exception):
 
 class TransactionNotFoundError(Exception):
     pass
+
+
+class CategoryHasTransactionsError(Exception):
+    pass

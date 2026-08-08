@@ -193,6 +193,7 @@ Reading it: `categories` table, integer PK `id`, unique varchar(100) `name`.
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
 
+
 class Transaction(Base):
     __tablename__ = "transactions"
 

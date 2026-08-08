@@ -58,8 +58,8 @@ class Point:
 
 
 p = Point()
-p.x = 10        # setting 'x' to 10
-print(p.x)      # reading 'x' → 10
+p.x = 10  # setting 'x' to 10
+print(p.x)  # reading 'x' → 10
 ```
 
 That's the entire trick. `Verbose` is a data descriptor (defines both

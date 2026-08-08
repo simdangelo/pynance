@@ -139,6 +139,24 @@ SQLAlchemy models don't create tables by themselves. Two options:
 - **Mutable defaults** — never `default=[]` on a relationship or column;
   it's shared across instances.
 
+### Querying gotchas (2.0 style)
+
+- **`db.query()` is legacy** — the 2.0 way is `db.execute(select(Model).where(...))`.
+  A `Result` object comes back; extract with `.scalar_one_or_none()` (lookup
+  that may be empty), `.scalars().all()` (list of values), or unpack rows as
+  tuples.
+- **Python `and`/`or` don't build SQL** — `(a == x) and (b == y)` evaluates
+  truthiness in Python instead of ANDing the conditions, producing wrong or
+  empty filters. Pass conditions as separate `.where()` arguments (implicit
+  AND) or use `sqlalchemy.and_`.
+- **Selecting columns + aggregates requires `group_by`** — `select(Model.col,
+  func.sum(Model.amount))` without `.group_by(Model.col)` is rejected by
+  Postgres ("must appear in the GROUP BY clause"). Group by every non-aggregate
+  selected column.
+- **Date-range filters over `extract`** — filtering `occurred_on >= first_day
+  AND occurred_on < first_day_next_month` (computed in Python) is index-friendly
+  and clearer than `extract('month'/'year', ...)` comparisons.
+
 ## Python mastery tie-in
 
 The 2.0 `Mapped[...]` syntax is built on Python **descriptors**.

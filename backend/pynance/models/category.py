@@ -11,7 +11,7 @@ class Category(Base):
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     transaction_type: Mapped[TransactionType] = mapped_column(
         Enum(TransactionType),
         nullable=False,

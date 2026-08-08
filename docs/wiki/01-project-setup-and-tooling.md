@@ -545,11 +545,13 @@ A pytest fixture to illustrate the fixture concept:
 ```python
 import pytest
 
+
 @pytest.fixture
 def counter():
     value = {"n": 0}
     yield value
     # teardown runs here; nothing to clean up in this case
+
 
 def test_increment(counter):
     counter["n"] += 1

@@ -14,6 +14,7 @@ Raw environment access spreads like this:
 ```python
 # everywhere, unchecked
 import os
+
 engine = create_engine(os.environ["DATABASE_URL"])
 secret = os.environ["SECRET_KEY"]
 ```
@@ -51,7 +52,7 @@ class Settings(BaseSettings):
 
     database_url: str
     secret_key: SecretStr
-    some_optional: int = 10   # defaults are allowed
+    some_optional: int = 10  # defaults are allowed
 ```
 
 - Every field maps to an environment variable of the same name (case-insensitive).
@@ -135,9 +136,9 @@ settings = Settings()
 # elsewhere
 from config import settings
 
-engine = create_engine(settings.database_url)          # typed str
-key = settings.secret_key.get_secret_value()           # explicit unwrap
-print(settings)                                        # secret_key=**********
+engine = create_engine(settings.database_url)  # typed str
+key = settings.secret_key.get_secret_value()  # explicit unwrap
+print(settings)  # secret_key=**********
 ```
 
 The instantiated `settings` object is a single shared instance imported

@@ -391,6 +391,9 @@ field, else current value), then compare and re-validate *those*.
 
 FastAPI asserts `Status code 204 must not have a response body` — you can't
 combine `response_model` with 204. The route returns `None`, no response model.
+The *why*: 204 semantically means "nothing to send back" — after a delete there
+is no resource to represent (see `topics/fastapi-basics.md` for the full
+status-code/body semantics).
 
 ### 6. Route ordering: static paths before parameterized ones
 
@@ -434,6 +437,47 @@ automatically (`?month=bad` → 422, `?transaction_type=bogus` → 422 via the
 enum), can be required or defaulted, and — unlike path params — can't collide
 with other routes. Full reasoning in `topics/fastapi-basics.md` ("Path vs
 query parameters").
+
+### 12. FK integrity: the DB constraint is the enforcer, the service is the messenger
+
+Deleting a category that transactions reference raises the question: where is
+the integrity rule enforced? The answer is **both layers, two different jobs**:
+
+- **The database is the hard guarantee.** A `ForeignKey` with no `ondelete`
+  defaults to `ON DELETE NO ACTION`: Postgres *refuses* the delete itself,
+  atomically and race-free. This was already in place — the model needed no
+  change for safety.
+- **The service check is the UX layer.** It turns the raw DB `IntegrityError`
+  (which would surface as a 500 with internals leaking) into a clean 409 with a
+  human-readable message.
+
+**Pre-check vs EAFP (Easier to Ask Forgiveness than Permission):**
+
+- A service *pre-check* ("does any transaction reference this category?") has a
+  **race condition**: between the check and the delete, another request can
+  insert a referencing transaction. The DB constraint is the only thing that
+  closes that window.
+- The EAFP shape deletes directly and translates the `IntegrityError`:
+
+```python
+db.delete(category)
+try:
+    db.commit()
+except IntegrityError as e:
+    db.rollback()
+    raise CategoryHasTransactionsError(...) from e
+```
+
+This is safe *because* the constraint exists — EAFP is not an alternative to
+the DB constraint, it's what makes the constraint usable. Keep both: the
+constraint is the enforcer, the exception handler is the polite messenger.
+The pre-check's job (distinguishing "doesn't exist" → 404 from "has
+transactions" → 409) stays as the existence check before the delete.
+
+**When EAFP is wrong:** if multiple constraints could fire on the same
+statement, a bare `IntegrityError` is ambiguous. It's only safe to translate
+unconditionally when the constraint set is unambiguous (here, transactions is
+the only FK pointing at categories).
 
 ---
 

@@ -214,6 +214,30 @@ Validation errors (bad body, wrong types) produce `422` automatically. The
 - **`204 No Content` must not have a body** — combining `response_model` with
   `status_code=204` raises an assertion error at startup. A 204 route returns
   `None` and has no response model.
+
+### Why delete returns nothing: the semantics of 204
+
+The status code *defines* whether a body is allowed — this is HTTP spec, not a
+FastAPI choice:
+
+- **204 No Content** = "the operation succeeded and there is nothing to send
+  back." The spec forbids a body (a response with a body must use 200).
+- **200 OK** = has a body: use it when you want to return the resource or a
+  message.
+- **201 Created** = has a body: returns the created resource.
+
+The pattern to remember:
+
+| Operation | Status | Body |
+|---|---|---|
+| Delete | 204 | none |
+| Create | 201 | the created resource |
+| Read / Update | 200 | the resource |
+
+Delete is 204 because after deleting there is no resource to represent —
+returning the deleted object would be misleading (it no longer exists), and a
+message is noise, since the status code already says everything. Clients
+understand "204 on delete = it's gone" without reading a body.
 - **`response_model` vs the return annotation** — the return annotation is for
   mypy/readers; `response_model` is what FastAPI actually serializes. If they
   disagree (e.g. annotation is an ORM model, model is a schema), the response

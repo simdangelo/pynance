@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom"
+import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -37,6 +38,7 @@ export function Layout() {
       <main className="mx-auto max-w-5xl px-4 py-8">
         <Outlet />
       </main>
+      <Toaster />
     </div>
   )
 }

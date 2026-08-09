@@ -32,7 +32,7 @@ export default function Dashboard() {
 
   const { data: spending, isError: spendingError } = useQuery({
     queryKey: ["spending", year, month],
-    queryFn: () => api.transactions.spendingByCategory("expense", year, month),
+    queryFn: () => api.transactions.summaryByCategory("expense", year, month),
   })
 
   const { data: transactions, isLoading, isError } = useQuery({

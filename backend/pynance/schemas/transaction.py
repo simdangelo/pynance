@@ -33,36 +33,36 @@ class TransactionResponse(TransactionBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class MonthlySummaryResponse(BaseModel):
+class SummaryResponse(BaseModel):
     income: Decimal
     expense: Decimal
 
 
-class CategorySpendingResponse(BaseModel):
+class SummaryByCategoryRowResponse(BaseModel):
     category_id: int
     category_name: str
     amount: Decimal
 
 
-class MonthlyTrendResponse(BaseModel):
+class TrendPointResponse(BaseModel):
     year: int
     month: int
     expense: Decimal
     income: Decimal
 
 
-class CategoryMonthPointResponse(BaseModel):
+class TrendByCategoryPointResponse(BaseModel):
     year: int
     month: int
     amount: Decimal
 
 
-class CategoryTrendResponse(BaseModel):
+class TrendByCategoryResponse(BaseModel):
     category_id: int
     category_name: str
-    points: list[CategoryMonthPointResponse]
+    points: list[TrendByCategoryPointResponse]
 
 
-class MonthComparisonResponse(BaseModel):
-    current: MonthlySummaryResponse
-    previous: MonthlySummaryResponse
+class ComparisonResponse(BaseModel):
+    current: SummaryResponse
+    previous: SummaryResponse

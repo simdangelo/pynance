@@ -8,14 +8,14 @@ from pynance.database import get_db
 from pynance.models.transaction import Transaction
 from pynance.models.types import TransactionType
 from pynance.schemas.transaction import (
-    CategorySpendingResponse,
-    CategoryTrendResponse,
-    MonthComparisonResponse,
-    MonthlySummaryResponse,
-    MonthlyTrendResponse,
+    ComparisonResponse,
+    SummaryByCategoryRowResponse,
+    SummaryResponse,
     TransactionCreate,
     TransactionResponse,
     TransactionUpdate,
+    TrendByCategoryResponse,
+    TrendPointResponse,
 )
 from pynance.services import transaction as transaction_service
 from pynance.services.exceptions import (
@@ -45,52 +45,52 @@ def create_transaction(
     return result
 
 
-@router.get("/summary", response_model=MonthlySummaryResponse, status_code=status.HTTP_200_OK)
-def get_monthly_summary(
+@router.get("/summary", response_model=SummaryResponse, status_code=status.HTTP_200_OK)
+def get_summary(
     month: int, year: int, db: Annotated[Session, Depends(get_db)]
-) -> transaction_service.MonthlySummary:
-    return transaction_service.get_monthly_summary(db, month, year)
+) -> transaction_service.Summary:
+    return transaction_service.get_summary(db, month, year)
 
 
 @router.get(
-    "/spending-by-category",
-    response_model=list[CategorySpendingResponse],
+    "/summary-by-category",
+    response_model=list[SummaryByCategoryRowResponse],
     status_code=status.HTTP_200_OK,
 )
-def get_categories_summary(
+def get_summary_by_category(
     transaction_type: TransactionType,
     month: int,
     year: int,
     db: Annotated[Session, Depends(get_db)],
-) -> list[transaction_service.CategorySummary]:
-    return transaction_service.get_categories_summary(db, transaction_type, month, year)
+) -> list[transaction_service.SummaryByCategoryRow]:
+    return transaction_service.get_summary_by_category(db, transaction_type, month, year)
 
 
-@router.get("/monthly-trend", response_model=list[MonthlyTrendResponse])
-def get_monthly_trend(
+@router.get("/trend", response_model=list[TrendPointResponse])
+def get_trend(
     start_date: date, end_date: date, db: Annotated[Session, Depends(get_db)]
-) -> list[transaction_service.MonthlyTrendPoint]:
-    return transaction_service.get_monthly_trend(
+) -> list[transaction_service.TrendPoint]:
+    return transaction_service.get_trend(
         db, date_range=transaction_service.DataRange(start_date, end_date)
     )
 
 
-@router.get("/categories-trend", response_model=list[CategoryTrendResponse])
-def get_categories_trend(
+@router.get("/trend-by-category", response_model=list[TrendByCategoryResponse])
+def get_trend_by_category(
     start_date: date, end_date: date, db: Annotated[Session, Depends(get_db)]
-) -> list[transaction_service.CategoryTrend]:
-    return transaction_service.get_categories_trend(
+) -> list[transaction_service.TrendByCategory]:
+    return transaction_service.get_trend_by_category(
         db, date_range=transaction_service.DataRange(start_date, end_date)
     )
 
 
-@router.get("/trend-vs-latest-month", response_model=MonthComparisonResponse)
-def get_trend_vs_latest_month(
+@router.get("/comparison", response_model=ComparisonResponse)
+def get_comparison(
     year: int,
     month: int,
     db: Annotated[Session, Depends(get_db)],
-) -> transaction_service.MonthComparison:
-    return transaction_service.get_trend_vs_latest_month(db, year, month)
+) -> transaction_service.Comparison:
+    return transaction_service.get_comparison(db, year, month)
 
 
 @router.get("/{transaction_id}", response_model=TransactionResponse)
@@ -137,5 +137,5 @@ def delete_transaction(transaction_id: int, db: Annotated[Session, Depends(get_d
 
 
 @router.get("", response_model=list[TransactionResponse], status_code=status.HTTP_200_OK)
-def get_transactions(db: Annotated[Session, Depends(get_db)]) -> list[Transaction]:
-    return transaction_service.get_transactions(db)
+def list_transactions(db: Annotated[Session, Depends(get_db)]) -> list[Transaction]:
+    return transaction_service.list_transactions(db)

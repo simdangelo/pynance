@@ -25,7 +25,7 @@ def create_category(db: Session, category: CategoryCreate) -> Category:
     return new_category
 
 
-def get_categories(db: Session) -> list[Category]:
+def list_categories(db: Session) -> list[Category]:
     return list(db.execute(select(Category)).scalars().all())
 
 

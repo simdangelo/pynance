@@ -95,17 +95,17 @@ def delete_transaction(db: Session, transaction_id: int) -> Transaction:
     return transaction
 
 
-def get_transactions(db: Session) -> list[Transaction]:
+def list_transactions(db: Session) -> list[Transaction]:
     return list(db.execute(select(Transaction)).scalars().all())
 
 
 @dataclass(frozen=True)
-class MonthlySummary:
+class Summary:
     income: Decimal
     expense: Decimal
 
 
-def get_monthly_summary(db: Session, month: int, year: int) -> MonthlySummary:
+def get_summary(db: Session, month: int, year: int) -> Summary:
     first_day = date(year, month, 1)
     next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
     first_day_next_month = date(next_year, next_month, 1)
@@ -126,19 +126,19 @@ def get_monthly_summary(db: Session, month: int, year: int) -> MonthlySummary:
             income = total
         else:
             expense = total
-    return MonthlySummary(income, expense)
+    return Summary(income, expense)
 
 
 @dataclass(frozen=True)
-class CategorySummary:
+class SummaryByCategoryRow:
     category_id: int
     category_name: str
     amount: Decimal
 
 
-def get_categories_summary(
+def get_summary_by_category(
     db: Session, transaction_type: TransactionType, month: int, year: int
-) -> list[CategorySummary]:
+) -> list[SummaryByCategoryRow]:
     first_day = date(year, month, 1)
     next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
     first_day_next_month = date(next_year, next_month, 1)
@@ -154,7 +154,7 @@ def get_categories_summary(
         .group_by(Transaction.category_id, Category.name)
     ).all()
 
-    return [CategorySummary(cid, name, total) for cid, name, total in rows]
+    return [SummaryByCategoryRow(cid, name, total) for cid, name, total in rows]
 
 
 @dataclass(frozen=True)
@@ -164,14 +164,14 @@ class DataRange:
 
 
 @dataclass
-class MonthlyTrendPoint:
+class TrendPoint:
     year: int
     month: int
     income: Decimal
     expense: Decimal
 
 
-def get_monthly_trend(db: Session, date_range: DataRange) -> list[MonthlyTrendPoint]:
+def get_trend(db: Session, date_range: DataRange) -> list[TrendPoint]:
     year_expr = func.extract("year", Transaction.occurred_on)
     month_expr = func.extract("month", Transaction.occurred_on)
 
@@ -185,14 +185,12 @@ def get_monthly_trend(db: Session, date_range: DataRange) -> list[MonthlyTrendPo
         .order_by(year_expr, month_expr, Transaction.transaction_type)
     ).all()
 
-    trends: dict[tuple[int, int], MonthlyTrendPoint] = {}
+    trends: dict[tuple[int, int], TrendPoint] = {}
     for year, month, transaction_type, amount in rows:
         key = (int(year), int(month))
         trend = trends.setdefault(
             key,
-            MonthlyTrendPoint(
-                year=int(year), month=int(month), income=Decimal("0"), expense=Decimal("0")
-            ),
+            TrendPoint(year=int(year), month=int(month), income=Decimal("0"), expense=Decimal("0")),
         )
 
         if transaction_type == "income":
@@ -204,20 +202,20 @@ def get_monthly_trend(db: Session, date_range: DataRange) -> list[MonthlyTrendPo
 
 
 @dataclass
-class CategoryMonthPoint:
+class TrendByCategoryPoint:
     year: int
     month: int
     amount: Decimal
 
 
 @dataclass
-class CategoryTrend:
+class TrendByCategory:
     category_id: int
     category_name: str
-    points: list[CategoryMonthPoint] = field(default_factory=list[CategoryMonthPoint])
+    points: list[TrendByCategoryPoint] = field(default_factory=list[TrendByCategoryPoint])
 
 
-def get_categories_trend(db: Session, date_range: DataRange) -> list[CategoryTrend]:
+def get_trend_by_category(db: Session, date_range: DataRange) -> list[TrendByCategory]:
     year_expr = func.extract("year", Transaction.occurred_on)
     month_expr = func.extract("month", Transaction.occurred_on)
 
@@ -232,21 +230,21 @@ def get_categories_trend(db: Session, date_range: DataRange) -> list[CategoryTre
         .order_by(Category.id, Category.name, year_expr, month_expr)
     ).all()
 
-    trends: dict[int, CategoryTrend] = {}
+    trends: dict[int, TrendByCategory] = {}
     for category_id, category_name, year, month, amount in rows:
-        trend = trends.setdefault(category_id, CategoryTrend(category_id, category_name))
-        trend.points.append(CategoryMonthPoint(year=int(year), month=int(month), amount=amount))
+        trend = trends.setdefault(category_id, TrendByCategory(category_id, category_name))
+        trend.points.append(TrendByCategoryPoint(year=int(year), month=int(month), amount=amount))
 
     return list(trends.values())
 
 
 @dataclass
-class MonthComparison:
-    current: MonthlySummary
-    previous: MonthlySummary
+class Comparison:
+    current: Summary
+    previous: Summary
 
 
-def get_trend_vs_latest_month(db: Session, year: int, month: int) -> MonthComparison:
+def get_comparison(db: Session, year: int, month: int) -> Comparison:
     reference_date = date(year, month, 1)
 
     current_year = reference_date.year
@@ -255,7 +253,7 @@ def get_trend_vs_latest_month(db: Session, year: int, month: int) -> MonthCompar
     previous_year = current_year - 1
     previous_month = 12 if current_month == 1 else current_month - 1
 
-    current_monthly_summary = get_monthly_summary(db, current_month, current_year)
-    previous_monthly_summary = get_monthly_summary(db, previous_month, previous_year)
+    current_monthly_summary = get_summary(db, current_month, current_year)
+    previous_monthly_summary = get_summary(db, previous_month, previous_year)
 
-    return MonthComparison(current_monthly_summary, previous_monthly_summary)
+    return Comparison(current_monthly_summary, previous_monthly_summary)

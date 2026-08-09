@@ -77,7 +77,7 @@ def test_spending_by_category(client: TestClient) -> None:
     )
 
     response = client.get(
-        "/api/transactions/spending-by-category?transaction_type=expense&year=2026&month=8"
+        "/api/transactions/summary-by-category?transaction_type=expense&year=2026&month=8"
     )
 
     assert response.status_code == 200
@@ -109,7 +109,7 @@ def test_spending_by_category_filters_type(client: TestClient) -> None:
     )
 
     response = client.get(
-        "/api/transactions/spending-by-category?transaction_type=income&year=2026&month=8"
+        "/api/transactions/summary-by-category?transaction_type=income&year=2026&month=8"
     )
 
     assert response.status_code == 200
@@ -121,7 +121,7 @@ def test_spending_by_category_filters_type(client: TestClient) -> None:
 
 def test_spending_by_category_empty_month(client: TestClient) -> None:
     response = client.get(
-        "/api/transactions/spending-by-category?transaction_type=expense&year=2026&month=1"
+        "/api/transactions/summary-by-category?transaction_type=expense&year=2026&month=1"
     )
 
     assert response.status_code == 200

@@ -409,7 +409,7 @@ response. Output schemas are `*Response`; input schemas are `*Create`/`*Update`.
 ### 8. Reports return named dataclasses, not tuples
 
 `tuple[Decimal, Decimal]` is unlabeled ("which is income?"). A small frozen
-dataclass (`MonthlySummary(income, expense)`) is self-documenting and maps
+dataclass (`Summary(income, expense)`) is self-documenting and maps
 cleanly to the response schema. The by-category report returns a list of such
 rows.
 

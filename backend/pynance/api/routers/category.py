@@ -28,8 +28,8 @@ def create_category(category: CategoryCreate, db: Annotated[Session, Depends(get
 
 
 @router.get("", response_model=list[CategoryResponse], status_code=status.HTTP_200_OK)
-def get_categories(db: Annotated[Session, Depends(get_db)]) -> list[Category]:
-    return category_service.get_categories(db)
+def list_categories(db: Annotated[Session, Depends(get_db)]) -> list[Category]:
+    return category_service.list_categories(db)
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)

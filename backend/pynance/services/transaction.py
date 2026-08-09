@@ -250,7 +250,7 @@ def get_comparison(db: Session, year: int, month: int) -> Comparison:
     current_year = reference_date.year
     current_month = reference_date.month
 
-    previous_year = current_year - 1
+    previous_year = current_year - 1 if current_month == 1 else current_year
     previous_month = 12 if current_month == 1 else current_month - 1
 
     current_monthly_summary = get_summary(db, current_month, current_year)

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
@@ -80,8 +80,8 @@ def update_transaction(db: Session, transaction_id: int, update: TransactionUpda
                 f"doesn't match category type {category.transaction_type}"
             )
 
-    for field, value in update.model_dump(exclude_unset=True).items():
-        setattr(transaction, field, value)
+    for field_to_update, value in update.model_dump(exclude_unset=True).items():
+        setattr(transaction, field_to_update, value)
 
     db.commit()
     db.refresh(transaction)
@@ -155,3 +155,107 @@ def get_categories_summary(
     ).all()
 
     return [CategorySummary(cid, name, total) for cid, name, total in rows]
+
+
+@dataclass(frozen=True)
+class DataRange:
+    start_date: date
+    end_date: date
+
+
+@dataclass
+class MonthlyTrendPoint:
+    year: int
+    month: int
+    income: Decimal
+    expense: Decimal
+
+
+def get_monthly_trend(db: Session, date_range: DataRange) -> list[MonthlyTrendPoint]:
+    year_expr = func.extract("year", Transaction.occurred_on)
+    month_expr = func.extract("month", Transaction.occurred_on)
+
+    rows = db.execute(
+        select(year_expr, month_expr, Transaction.transaction_type, func.sum(Transaction.amount))
+        .where(
+            Transaction.occurred_on >= date_range.start_date,
+            Transaction.occurred_on <= date_range.end_date,
+        )
+        .group_by(year_expr, month_expr, Transaction.transaction_type)
+        .order_by(year_expr, month_expr, Transaction.transaction_type)
+    ).all()
+
+    trends: dict[tuple[int, int], MonthlyTrendPoint] = {}
+    for year, month, transaction_type, amount in rows:
+        key = (int(year), int(month))
+        trend = trends.setdefault(
+            key,
+            MonthlyTrendPoint(
+                year=int(year), month=int(month), income=Decimal("0"), expense=Decimal("0")
+            ),
+        )
+
+        if transaction_type == "income":
+            trend.income = amount
+        elif transaction_type == "expense":
+            trend.expense = amount
+
+    return list(trends.values())
+
+
+@dataclass
+class CategoryMonthPoint:
+    year: int
+    month: int
+    amount: Decimal
+
+
+@dataclass
+class CategoryTrend:
+    category_id: int
+    category_name: str
+    points: list[CategoryMonthPoint] = field(default_factory=list[CategoryMonthPoint])
+
+
+def get_categories_trend(db: Session, date_range: DataRange) -> list[CategoryTrend]:
+    year_expr = func.extract("year", Transaction.occurred_on)
+    month_expr = func.extract("month", Transaction.occurred_on)
+
+    rows = db.execute(
+        select(Category.id, Category.name, year_expr, month_expr, func.sum(Transaction.amount))
+        .join(Category, Category.id == Transaction.category_id)
+        .where(
+            Transaction.occurred_on >= date_range.start_date,
+            Transaction.occurred_on <= date_range.end_date,
+        )
+        .group_by(Category.id, Category.name, year_expr, month_expr)
+        .order_by(Category.id, Category.name, year_expr, month_expr)
+    ).all()
+
+    trends: dict[int, CategoryTrend] = {}
+    for category_id, category_name, year, month, amount in rows:
+        trend = trends.setdefault(category_id, CategoryTrend(category_id, category_name))
+        trend.points.append(CategoryMonthPoint(year=int(year), month=int(month), amount=amount))
+
+    return list(trends.values())
+
+
+@dataclass
+class MonthComparison:
+    current: MonthlySummary
+    previous: MonthlySummary
+
+
+def get_trend_vs_latest_month(db: Session, year: int, month: int) -> MonthComparison:
+    reference_date = date(year, month, 1)
+
+    current_year = reference_date.year
+    current_month = reference_date.month
+
+    previous_year = current_year - 1
+    previous_month = 12 if current_month == 1 else current_month - 1
+
+    current_monthly_summary = get_monthly_summary(db, current_month, current_year)
+    previous_monthly_summary = get_monthly_summary(db, previous_month, previous_year)
+
+    return MonthComparison(current_monthly_summary, previous_monthly_summary)

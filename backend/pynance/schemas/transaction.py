@@ -42,3 +42,27 @@ class CategorySpendingResponse(BaseModel):
     category_id: int
     category_name: str
     amount: Decimal
+
+
+class MonthlyTrendResponse(BaseModel):
+    year: int
+    month: int
+    expense: Decimal
+    income: Decimal
+
+
+class CategoryMonthPointResponse(BaseModel):
+    year: int
+    month: int
+    amount: Decimal
+
+
+class CategoryTrendResponse(BaseModel):
+    category_id: int
+    category_name: str
+    points: list[CategoryMonthPointResponse]
+
+
+class MonthComparisonResponse(BaseModel):
+    current: MonthlySummaryResponse
+    previous: MonthlySummaryResponse

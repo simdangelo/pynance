@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,7 +9,10 @@ from pynance.models.transaction import Transaction
 from pynance.models.types import TransactionType
 from pynance.schemas.transaction import (
     CategorySpendingResponse,
+    CategoryTrendResponse,
+    MonthComparisonResponse,
     MonthlySummaryResponse,
+    MonthlyTrendResponse,
     TransactionCreate,
     TransactionResponse,
     TransactionUpdate,
@@ -60,6 +64,33 @@ def get_categories_summary(
     db: Annotated[Session, Depends(get_db)],
 ) -> list[transaction_service.CategorySummary]:
     return transaction_service.get_categories_summary(db, transaction_type, month, year)
+
+
+@router.get("/monthly-trend", response_model=list[MonthlyTrendResponse])
+def get_monthly_trend(
+    start_date: date, end_date: date, db: Annotated[Session, Depends(get_db)]
+) -> list[transaction_service.MonthlyTrendPoint]:
+    return transaction_service.get_monthly_trend(
+        db, date_range=transaction_service.DataRange(start_date, end_date)
+    )
+
+
+@router.get("/categories-trend", response_model=list[CategoryTrendResponse])
+def get_categories_trend(
+    start_date: date, end_date: date, db: Annotated[Session, Depends(get_db)]
+) -> list[transaction_service.CategoryTrend]:
+    return transaction_service.get_categories_trend(
+        db, date_range=transaction_service.DataRange(start_date, end_date)
+    )
+
+
+@router.get("/trend-vs-latest-month", response_model=MonthComparisonResponse)
+def get_trend_vs_latest_month(
+    year: int,
+    month: int,
+    db: Annotated[Session, Depends(get_db)],
+) -> transaction_service.MonthComparison:
+    return transaction_service.get_trend_vs_latest_month(db, year, month)
 
 
 @router.get("/{transaction_id}", response_model=TransactionResponse)

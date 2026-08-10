@@ -170,3 +170,191 @@ def test_delete_transaction_not_found_returns_404(client: TestClient) -> None:
     response = client.delete("/api/transactions/9999")
 
     assert response.status_code == 404
+
+
+def test_list_transactions_filters_by_year_and_month(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="10.00",
+        category_id=groceries["id"],
+        description="food",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="20.00",
+        category_id=groceries["id"],
+        description="food july",
+        occurred_on="2026-07-15",
+    )
+
+    response = client.get("/api/transactions?year=2026&month=8")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["amount"] == "10.00"
+
+
+def test_list_transactions_filters_by_year_only(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="10.00",
+        category_id=groceries["id"],
+        description="food",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="20.00",
+        category_id=groceries["id"],
+        description="food 2025",
+        occurred_on="2025-08-01",
+    )
+
+    response = client.get("/api/transactions?year=2026")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["description"] == "food"
+
+
+def test_list_transactions_filters_by_type(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    salary = create_category(client, "salary", "income")
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="10.00",
+        category_id=groceries["id"],
+        description="food",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        transaction_type="income",
+        amount="100.00",
+        category_id=salary["id"],
+        description="salary",
+        occurred_on="2026-08-01",
+    )
+
+    response = client.get("/api/transactions?transaction_type=expense")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["description"] == "food"
+
+
+def test_list_transactions_filters_by_category(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    bills = create_category(client, "bills", "expense")
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="10.00",
+        category_id=groceries["id"],
+        description="food",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="25.00",
+        category_id=bills["id"],
+        description="electricity",
+        occurred_on="2026-08-01",
+    )
+
+    response = client.get(f"/api/transactions?category_id={bills['id']}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["description"] == "electricity"
+
+
+def test_list_transactions_searches_by_description(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="10.00",
+        category_id=groceries["id"],
+        description="weekly groceries",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="20.00",
+        category_id=groceries["id"],
+        description="electricity bill",
+        occurred_on="2026-08-05",
+    )
+
+    response = client.get("/api/transactions?q=groceries")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["description"] == "weekly groceries"
+
+
+def test_list_transactions_search_is_case_insensitive(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="10.00",
+        category_id=groceries["id"],
+        description="Weekly Groceries",
+        occurred_on="2026-08-01",
+    )
+
+    response = client.get("/api/transactions?q=GROCERIES")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+
+
+def test_list_transactions_combined_filters(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="10.00",
+        category_id=groceries["id"],
+        description="groceries august",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        transaction_type="expense",
+        amount="20.00",
+        category_id=groceries["id"],
+        description="groceries july",
+        occurred_on="2026-07-01",
+    )
+
+    response = client.get("/api/transactions?q=groceries&year=2026&month=8")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["amount"] == "10.00"
+
+
+def test_list_transactions_month_without_year_returns_400(client: TestClient) -> None:
+    response = client.get("/api/transactions?month=8")
+
+    assert response.status_code == 400

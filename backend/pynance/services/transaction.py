@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, and_, func, select
 from sqlalchemy.orm import Session
 
 from pynance.models.category import Category
@@ -11,6 +11,7 @@ from pynance.models.types import TransactionType
 from pynance.schemas.transaction import TransactionCreate, TransactionUpdate
 from pynance.services.exceptions import (
     CategoryNotFoundError,
+    MonthWithoutYearError,
     TransactionNotFoundError,
     TransactionTypeMismatchError,
 )
@@ -95,8 +96,50 @@ def delete_transaction(db: Session, transaction_id: int) -> Transaction:
     return transaction
 
 
-def list_transactions(db: Session) -> list[Transaction]:
-    return list(db.execute(select(Transaction)).scalars().all())
+@dataclass
+class TransactionFilters:
+    q: str | None = None
+    year: int | None = None
+    month: int | None = None
+    transaction_type: TransactionType | None = None
+    category_id: int | None = None
+
+
+def list_transactions(db: Session, filter_params: TransactionFilters) -> list[Transaction]:
+    conditions: list[ColumnElement[bool]] = []
+
+    if filter_params.q:
+        conditions.append(Transaction.description.ilike(f"%{filter_params.q}%"))
+    if filter_params.category_id:
+        conditions.append(Transaction.category_id == filter_params.category_id)
+    if filter_params.transaction_type:
+        conditions.append(Transaction.transaction_type == filter_params.transaction_type)
+    if filter_params.month and filter_params.year:
+        first_day = date(filter_params.year, filter_params.month, 1)
+        next_year, next_month = (
+            (filter_params.year + 1, 1)
+            if filter_params.month == 12
+            else (filter_params.year, filter_params.month + 1)
+        )
+        first_day_next_month = date(next_year, next_month, 1)
+        conditions.append(
+            and_(
+                Transaction.occurred_on >= first_day, Transaction.occurred_on < first_day_next_month
+            )
+        )
+    if filter_params.year and not filter_params.month:
+        first_day = date(filter_params.year, 1, 1)
+        first_day_next_year = date(filter_params.year + 1, 1, 1)
+        conditions.append(
+            and_(
+                Transaction.occurred_on >= first_day, Transaction.occurred_on < first_day_next_year
+            )
+        )
+    if not filter_params.year and filter_params.month:
+        raise MonthWithoutYearError("Cannot filter month without year")
+
+    query = select(Transaction).where(*conditions).order_by(Transaction.occurred_on.desc())
+    return list(db.execute(query).scalars().all())
 
 
 @dataclass(frozen=True)

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from pynance.database import get_db
 from pynance.models.category import Category
-from pynance.schemas.category import CategoryCreate, CategoryResponse
+from pynance.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate
 from pynance.services import category as category_service
 from pynance.services.exceptions import (
     CategoryHasTransactionsError,
@@ -44,4 +44,16 @@ def delete_category(category_id: int, db: Annotated[Session, Depends(get_db)]) -
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Category is associated to existing trnasactions",
+        ) from e
+
+
+@router.patch("/{category_id}", response_model=CategoryResponse)
+def update_category(
+    category_id: int, update: CategoryUpdate, db: Annotated[Session, Depends(get_db)]
+) -> Category:
+    try:
+        return category_service.update_category(db, category_id, update)
+    except CategoryNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Category doesn't exist"
         ) from e

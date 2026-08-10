@@ -16,3 +16,7 @@ class TransactionNotFoundError(Exception):
 
 class CategoryHasTransactionsError(Exception):
     pass
+
+
+class MonthWithoutYearError(Exception):
+    pass

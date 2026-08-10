@@ -20,6 +20,7 @@ from pynance.schemas.transaction import (
 from pynance.services import transaction as transaction_service
 from pynance.services.exceptions import (
     CategoryNotFoundError,
+    MonthWithoutYearError,
     TransactionNotFoundError,
     TransactionTypeMismatchError,
 )
@@ -137,5 +138,20 @@ def delete_transaction(transaction_id: int, db: Annotated[Session, Depends(get_d
 
 
 @router.get("", response_model=list[TransactionResponse], status_code=status.HTTP_200_OK)
-def list_transactions(db: Annotated[Session, Depends(get_db)]) -> list[Transaction]:
-    return transaction_service.list_transactions(db)
+def list_transactions(
+    db: Annotated[Session, Depends(get_db)],
+    q: str | None = None,
+    year: int | None = None,
+    month: int | None = None,
+    transaction_type: TransactionType | None = None,
+    category_id: int | None = None,
+) -> list[Transaction]:
+    filter_params = transaction_service.TransactionFilters(
+        q, year, month, transaction_type, category_id
+    )
+    try:
+        return transaction_service.list_transactions(db, filter_params)
+    except MonthWithoutYearError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot filter month without year"
+        ) from e

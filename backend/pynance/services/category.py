@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from pynance.models.category import Category
-from pynance.schemas.category import CategoryCreate
+from pynance.schemas.category import CategoryCreate, CategoryUpdate
 from pynance.services.exceptions import (
     CategoryHasTransactionsError,
     CategoryNotFoundError,
@@ -43,4 +43,17 @@ def delete_category(db: Session, category_id: int) -> Category:
             f"Category with id '{category_id}' is associated to one or more transactions."
             " You can't delete it"
         ) from e
+    return category
+
+
+def update_category(db: Session, category_id: int, update: CategoryUpdate) -> Category:
+    category = db.execute(select(Category).where(Category.id == category_id)).scalar_one_or_none()
+    if category is None:
+        raise CategoryNotFoundError(f"Category with id '{category_id}' doesn't exist")
+
+    for field_to_update, value in update.model_dump(exclude_unset=True).items():
+        setattr(category, field_to_update, value)
+
+    db.commit()
+    db.refresh(category)
     return category

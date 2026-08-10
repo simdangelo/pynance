@@ -103,9 +103,19 @@ rows.
 
 ## 2. Pydantic schemas — the API contract
 
-Schemas define *what the API accepts and returns*. They are deliberately not
-the internal working data of services — the service layer works with SQLAlchemy
-models; schemas are the HTTP boundary.
+Schemas define *what the API accepts and returns*. There are two kinds with
+different roles — don't conflate them:
+
+- **Request schemas** (`*Create`/`*Update`) — validated *input* to services.
+  Passing them to service functions (`create_transaction(db, transaction:
+  TransactionCreate)`) is the standard FastAPI pattern: the schema is validated
+  at the HTTP boundary, then handed to the service as an already-validated,
+  typed value object.
+- **Response schemas** (`*Response`) — API-only *output*. They shape what the
+  client sees and are never used as service input/output.
+
+The service layer works with SQLAlchemy models (and its own dataclasses for
+report results); response schemas are the HTTP boundary.
 
 ### Naming convention
 
@@ -161,6 +171,26 @@ class TransactionCreate(BaseModel):
 
 `Field(gt=0)` enforces "positive amount" at the boundary — a good use of schema
 validation (it's a shape rule, not a cross-entity rule).
+
+### What would actually be wrong
+
+To sharpen the boundary, these are the *real* violations to avoid:
+
+- **Leaking schemas into the database layer** — passing a Pydantic schema to a
+  model constructor or into a query (e.g. `Transaction(**create.model_dump())`
+  is fine *in a service*, but `db.add(CategoryCreate(...))` or storing schemas
+  in models is not). The API contract never becomes persistence data.
+- **Using a response schema as service input or output** — e.g. `get_summary`
+  returning a `SummaryResponse`, or a service accepting a `*Response` as an
+  argument. Services return their own plain types (dataclasses for reports);
+  the API maps them to response schemas at the boundary.
+- **Services depending on FastAPI itself** — importing HTTP concepts
+  (`HTTPException`, `Request`) into `services/`. Pydantic is fine (it's a
+  validation library, not a web framework); FastAPI is not.
+
+These are the boundaries that keep services reusable, testable, and
+transport-independent — request schemas in, plain types out, no framework in
+the middle.
 
 ---
 
@@ -478,6 +508,83 @@ transactions" → 409) stays as the existence check before the delete.
 statement, a bare `IntegrityError` is ambiguous. It's only safe to translate
 unconditionally when the constraint set is unambiguous (here, transactions is
 the only FK pointing at categories).
+
+### 13. Query filters as a value object
+
+When a list endpoint grows optional filters (`year`, `month`, `q`,
+`transaction_type`, `category_id`), pass them to the service as **one
+dataclass**, not as a growing list of positional parameters:
+
+```python
+@dataclass
+class TransactionFilters:
+    q: str | None = None
+    year: int | None = None
+    month: int | None = None
+    transaction_type: TransactionType | None = None
+    category_id: int | None = None
+```
+
+The service builds the query by appending conditions only for the filters that
+are set:
+
+```python
+conditions: list[ColumnElement[bool]] = []
+if filters.q:
+    conditions.append(Transaction.description.ilike(f"%{filters.q}%"))
+if filters.category_id:
+    conditions.append(Transaction.category_id == filters.category_id)
+# ...
+query = select(Transaction).where(*conditions).order_by(...)
+```
+
+Why this pays off:
+
+- **The filter set is the contract** — one value object names all the ways a
+  list can be filtered; adding a filter means adding one field, not changing
+  every call site.
+- **Composable conditions** — `.where(*conditions)` with an empty list is a
+  valid "no filter" query; no special-casing the unfiltered path.
+- **Consistent with the reports** — `DataRange` for trends, `TransactionFilters`
+  for lists: compound inputs are value objects, not parameter lists.
+- **Validation lives in the service** — e.g. "month without year" is a domain
+  rule: `raise MonthWithoutYearError` in the service, translated to 400 in the
+  router. (Note: `if filters.month:` alone can't build a range without a year —
+  the rule must be explicit.)
+
+Naming note (lesson 11's rule, applied to filters): query params are short and
+semantic (`q`, not `description_str` — the Python type never belongs in the API
+contract). The period stays out of names: `year`/`month` are params, and when
+both are present the service builds the `>= first day, < first day of next
+month` range — the same date-range pattern used everywhere else.
+
+### 14. Test the boundary cases — the "passed by luck" trap
+
+The comparison endpoint (`current` vs `previous` month) had a subtle bug:
+
+```python
+previous_year = current_year - 1          # ← ALWAYS decremented
+previous_month = 12 if current_month == 1 else current_month - 1
+```
+
+The year was decremented unconditionally, so comparing August 2026 looked up
+**July 2025**. The test suite *had* a January-rollover test — and it passed!
+Because for January the unconditional `-1` happens to be correct. The bug only
+surfaced when a **non-January** comparison test was added.
+
+Two lessons:
+
+- **A test that passes is not proof of correctness** — it's proof only of the
+  cases it exercises. The January test passed "by luck" because the buggy line
+  coincided with the correct behavior for that specific input.
+- **Test the boundary *and* the middle.** Boundary cases (January→December
+  rollover) are essential, but they can mask bugs that only appear away from
+  the boundary. A table of representative cases — January, a mid-year month,
+  December — covers both.
+
+This is the "assert the outcome, not the steps" principle from the pytest
+topic applied to date math: the outcome for August is what caught it, not the
+code path.
 
 ---
 

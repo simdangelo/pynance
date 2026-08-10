@@ -46,6 +46,8 @@ The user is a mid-level Python developer and wants this project to also be an op
 
 Within each module, prefer a **vertical-slice** feel where possible: even early modules should let the user see how the layers (`api` → `services` → `models`) will eventually connect, rather than studying each layer in total isolation forever.
 
+**Product features are tracked separately** in `docs/ROADMAP.md` (recurring transactions, assets, net worth, allocation). They build on the learning modules and are not part of this fixed list — when a feature needs a non-trivial design decision, it gets its own wiki + ADR like the modules do.
+
 ---
 
 ## Fixed Technology Choices (not open for reconsideration mid-project)

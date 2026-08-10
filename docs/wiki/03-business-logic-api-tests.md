@@ -80,9 +80,17 @@ terms.
 ### A real rule to implement
 
 Your domain has a genuine invariant worth implementing and testing: **a
-transaction's `transaction_type` must match its category's `transaction_type`**.
-An expense transaction cannot reference an income category. That rule lives in
-the service, raised as a domain exception, and the API turns it into a 422/400.
+transaction's `transaction_type` is *derived from* its category's
+`transaction_type`** — the category is the single source of truth, and the
+transaction computes its type through the FK (see ADR 0003). The strongest
+form of this rule is structural: the type is never stored on the transaction,
+so a mismatched pair is unrepresentable — no service check can drift.
+
+How this came to be: an earlier design stored `transaction_type` on both
+entities with a service-level "must match" invariant. A bug surfaced when
+retyping a category left its transactions with the old type — the classic
+update anomaly of a denormalized duplicate. The fix was to derive rather than
+sync: remove the column, keep one source of truth.
 
 ### Returning results
 
@@ -344,8 +352,9 @@ the standard approach.
 ### What to test (the failure modes)
 
 - Happy paths: create, read, update, delete, reports return correct data.
-- **The domain invariant**: creating a transaction whose category type doesn't
-  match → expect the mapped HTTP error.
+- **The derived-type behavior**: create a transaction via an income category,
+  retype the category to expense, assert the transaction's *reported* type
+  follows — the regression test for the drift bug (ADR 0003).
 - Not-found: get/update/delete on a nonexistent id → 404.
 - Validation: missing/empty fields → 422.
 - Report correctness: seed a few transactions, assert the totals.
@@ -357,12 +366,13 @@ the standard approach.
 | Domain situation | Service raises | API returns |
 |---|---|---|
 | Category/transaction not found | `CategoryNotFoundError` / `TransactionNotFoundError` | 404 |
-| Type mismatch / invalid operation | `TransactionTypeMismatchError` | 422 |
 | Missing/invalid input shape | (not raised — Pydantic handles it) | 422 |
 | Everything OK | — | 200/201/204 |
 
 Pydantic validation failures (bad body) become 422 automatically — you don't
-write code for those. Your code handles the *domain* failures.
+write code for those. Your code handles the *domain* failures. (There is no
+"type mismatch" row: since ADR 0003, the type is derived from the category, so
+a mismatch is structurally impossible.)
 
 ---
 
@@ -586,6 +596,40 @@ This is the "assert the outcome, not the steps" principle from the pytest
 topic applied to date math: the outcome for August is what caught it, not the
 code path.
 
+### 15. Derived data: normalize, don't sync
+
+The drift bug (lesson 14's cousin) taught a schema lesson: when a value is
+*derivable* from another value through a foreign key, storing both copies is a
+**denormalized duplicate** — and every duplicate must be kept in sync by
+application code, which means one day a sync path will be forgotten.
+
+The fix wasn't more sync code; it was **removing the duplicate** (ADR 0003):
+
+- `transaction_type` is stored only on `Category`.
+- `Transaction` exposes it as a derived `@property` reading
+  `self.category.transaction_type` through a `relationship()`.
+- The API read contract is unchanged (`TransactionResponse` still has the
+  field, populated from the property); the write contract drops it (the client
+  picks a category, the type follows).
+- Reports group by `categories.transaction_type` via a join.
+
+The payoff: the mismatch is now **structurally unrepresentable** — no service
+check, no exception, no 422, no drift possible. Retyping a category
+reclassifies its transactions automatically (accepted deliberately for this
+app; an audited ledger would instead keep the type as an immutable snapshot).
+
+Three general lessons:
+
+- **"Keep it in sync" is a design smell.** If a value is derivable, derive it —
+  sync code is where consistency bugs hide.
+- **Schema-enforced rules beat code-enforced rules.** A constraint or a
+  missing-column impossibility is stronger than any service check, because it
+  can't be forgotten.
+- **Properties over relationships hide cost.** The derived `@property` looks
+  like a plain field but lazy-loads the category on every access — a list of
+  transactions now does N+1 queries (see `topics/n-plus-one.md`). The fix is
+  eager loading (`selectinload`), not changing the design.
+
 ---
 
 ## Optional deeper reading
@@ -599,6 +643,9 @@ required. New this module:
   Base/Create/Update/Response.
 - `topics/sqlalchemy-sessions.md` — the engine/sessionmaker/Session stack,
   flush/commit/refresh, `expire_on_commit`, and the `get_db` pattern.
+- `topics/n-plus-one.md` — lazy loading, the N+1 problem, `selectinload`/eager
+  loading, and how to spot it in the query log. (Triggered by the derived
+  `transaction_type` property, ADR 0003.)
 - `topics/pytest-basics.md` — discovery, fixtures (incl. the `yield` form and
   scopes), `parametrize`, `conftest.py`, running tests, and what makes tests
   good.

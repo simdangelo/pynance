@@ -13,7 +13,6 @@ from pynance.services.exceptions import (
     CategoryNotFoundError,
     MonthWithoutYearError,
     TransactionNotFoundError,
-    TransactionTypeMismatchError,
 )
 
 
@@ -24,13 +23,7 @@ def create_transaction(db: Session, transaction: TransactionCreate) -> Transacti
     if category is None:
         raise CategoryNotFoundError(f"Category with id '{transaction.category_id}' doesn't exist")
 
-    if category.transaction_type != transaction.transaction_type:
-        raise TransactionTypeMismatchError(
-            f"Transaction type {transaction.transaction_type}"
-            f" does not match category type {category.transaction_type}"
-        )
     new_transaction = Transaction(
-        transaction_type=transaction.transaction_type,
         amount=transaction.amount,
         category_id=transaction.category_id,
         description=transaction.description,
@@ -55,31 +48,14 @@ def get_transaction(db: Session, transaction_id: int) -> Transaction:
 def update_transaction(db: Session, transaction_id: int, update: TransactionUpdate) -> Transaction:
     transaction = get_transaction(db, transaction_id)
 
-    # Valori effettivi che la transazione avrà dopo l'update: se il campo è stato
-    # fornito dal client si usa quello, altrimenti si mantiene il valore attuale.
-    new_type = (
-        update.transaction_type
-        if update.transaction_type is not None
-        else transaction.transaction_type
-    )
     new_category_id = (
         update.category_id if update.category_id is not None else transaction.category_id
     )
-
-    # Ogni transazione deve avere lo stesso transaction_type della propria categoria.
-    # Si riesegue il controllo solo se category_id o transaction_type cambiano davvero.
-
-    if new_category_id != transaction.category_id or new_type != transaction.transaction_type:
-        category = db.execute(
-            select(Category).where(Category.id == new_category_id)
-        ).scalar_one_or_none()
-        if category is None:
-            raise CategoryNotFoundError(f"Category with id '{new_category_id}' doesn't exist")
-        if category.transaction_type != new_type:
-            raise TransactionTypeMismatchError(
-                f"Transaction type {new_type} "
-                f"doesn't match category type {category.transaction_type}"
-            )
+    category = db.execute(
+        select(Category).where(Category.id == new_category_id)
+    ).scalar_one_or_none()
+    if category is None:
+        raise CategoryNotFoundError(f"Category with id '{new_category_id}' doesn't exist")
 
     for field_to_update, value in update.model_dump(exclude_unset=True).items():
         setattr(transaction, field_to_update, value)
@@ -101,7 +77,6 @@ class TransactionFilters:
     q: str | None = None
     year: int | None = None
     month: int | None = None
-    transaction_type: TransactionType | None = None
     category_id: int | None = None
 
 
@@ -112,8 +87,6 @@ def list_transactions(db: Session, filter_params: TransactionFilters) -> list[Tr
         conditions.append(Transaction.description.ilike(f"%{filter_params.q}%"))
     if filter_params.category_id:
         conditions.append(Transaction.category_id == filter_params.category_id)
-    if filter_params.transaction_type:
-        conditions.append(Transaction.transaction_type == filter_params.transaction_type)
     if filter_params.month and filter_params.year:
         first_day = date(filter_params.year, filter_params.month, 1)
         next_year, next_month = (
@@ -154,12 +127,13 @@ def get_summary(db: Session, month: int, year: int) -> Summary:
     first_day_next_month = date(next_year, next_month, 1)
 
     rows = db.execute(
-        select(Transaction.transaction_type, func.sum(Transaction.amount))
+        select(Category.transaction_type, func.sum(Transaction.amount))
+        .join(Category, Category.id == Transaction.category_id)
         .where(
             Transaction.occurred_on >= first_day,
             Transaction.occurred_on < first_day_next_month,
         )
-        .group_by(Transaction.transaction_type)
+        .group_by(Category.transaction_type)
     ).all()
 
     income = Decimal("0")
@@ -191,7 +165,7 @@ def get_summary_by_category(
         .where(
             Transaction.occurred_on >= first_day,
             Transaction.occurred_on < first_day_next_month,
-            Transaction.transaction_type == transaction_type,
+            Category.transaction_type == transaction_type,
         )
         .join(Category, Transaction.category_id == Category.id)
         .group_by(Transaction.category_id, Category.name)
@@ -219,13 +193,14 @@ def get_trend(db: Session, date_range: DataRange) -> list[TrendPoint]:
     month_expr = func.extract("month", Transaction.occurred_on)
 
     rows = db.execute(
-        select(year_expr, month_expr, Transaction.transaction_type, func.sum(Transaction.amount))
+        select(year_expr, month_expr, Category.transaction_type, func.sum(Transaction.amount))
+        .join(Category, Category.id == Transaction.category_id)
         .where(
             Transaction.occurred_on >= date_range.start_date,
             Transaction.occurred_on <= date_range.end_date,
         )
-        .group_by(year_expr, month_expr, Transaction.transaction_type)
-        .order_by(year_expr, month_expr, Transaction.transaction_type)
+        .group_by(year_expr, month_expr, Category.transaction_type)
+        .order_by(year_expr, month_expr, Category.transaction_type)
     ).all()
 
     trends: dict[tuple[int, int], TrendPoint] = {}

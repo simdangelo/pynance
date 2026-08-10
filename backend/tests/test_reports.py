@@ -8,7 +8,6 @@ def test_monthly_summary(client: TestClient) -> None:
     salary = create_category(client, "salary", "income")
     create_transaction(
         client,
-        transaction_type="expense",
         amount="10.00",
         category_id=groceries["id"],
         description="food",
@@ -16,7 +15,6 @@ def test_monthly_summary(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="expense",
         amount="20.50",
         category_id=groceries["id"],
         description="more food",
@@ -24,7 +22,6 @@ def test_monthly_summary(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="income",
         amount="100.00",
         category_id=salary["id"],
         description="salary",
@@ -32,7 +29,6 @@ def test_monthly_summary(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="expense",
         amount="5.00",
         category_id=groceries["id"],
         description="last month",
@@ -61,7 +57,6 @@ def test_spending_by_category(client: TestClient) -> None:
     bills = create_category(client, "bills", "expense")
     create_transaction(
         client,
-        transaction_type="expense",
         amount="10.00",
         category_id=groceries["id"],
         description="food",
@@ -69,7 +64,6 @@ def test_spending_by_category(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="expense",
         amount="25.00",
         category_id=bills["id"],
         description="electricity",
@@ -93,7 +87,6 @@ def test_spending_by_category_filters_type(client: TestClient) -> None:
     salary = create_category(client, "salary", "income")
     create_transaction(
         client,
-        transaction_type="expense",
         amount="10.00",
         category_id=groceries["id"],
         description="food",
@@ -101,7 +94,6 @@ def test_spending_by_category_filters_type(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="income",
         amount="100.00",
         category_id=salary["id"],
         description="salary",
@@ -133,7 +125,6 @@ def test_trend(client: TestClient) -> None:
     salary = create_category(client, "salary", "income")
     create_transaction(
         client,
-        transaction_type="expense",
         amount="10.00",
         category_id=groceries["id"],
         description="food",
@@ -141,7 +132,6 @@ def test_trend(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="expense",
         amount="20.50",
         category_id=groceries["id"],
         description="more food",
@@ -149,7 +139,6 @@ def test_trend(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="income",
         amount="100.00",
         category_id=salary["id"],
         description="salary",
@@ -157,7 +146,6 @@ def test_trend(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="expense",
         amount="5.00",
         category_id=groceries["id"],
         description="out of range",
@@ -188,7 +176,6 @@ def test_trend_by_category(client: TestClient) -> None:
     bills = create_category(client, "bills", "expense")
     create_transaction(
         client,
-        transaction_type="expense",
         amount="10.00",
         category_id=groceries["id"],
         description="food",
@@ -196,7 +183,6 @@ def test_trend_by_category(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="expense",
         amount="20.50",
         category_id=groceries["id"],
         description="more food",
@@ -204,7 +190,6 @@ def test_trend_by_category(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="expense",
         amount="5.00",
         category_id=bills["id"],
         description="electricity",
@@ -247,7 +232,6 @@ def test_comparison(client: TestClient) -> None:
     salary = create_category(client, "salary", "income")
     create_transaction(
         client,
-        transaction_type="expense",
         amount="10.00",
         category_id=groceries["id"],
         description="food",
@@ -255,7 +239,6 @@ def test_comparison(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="income",
         amount="100.00",
         category_id=salary["id"],
         description="salary",
@@ -263,7 +246,6 @@ def test_comparison(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="expense",
         amount="30.00",
         category_id=groceries["id"],
         description="food last month",
@@ -284,7 +266,6 @@ def test_comparison_january_rollover(client: TestClient) -> None:
     groceries = create_category(client, "groceries", "expense")
     create_transaction(
         client,
-        transaction_type="expense",
         amount="10.00",
         category_id=groceries["id"],
         description="food",
@@ -292,7 +273,6 @@ def test_comparison_january_rollover(client: TestClient) -> None:
     )
     create_transaction(
         client,
-        transaction_type="expense",
         amount="7.50",
         category_id=groceries["id"],
         description="food in december",

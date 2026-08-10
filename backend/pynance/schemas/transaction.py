@@ -14,12 +14,14 @@ class TransactionBase(BaseModel):
     occurred_on: date
 
 
-class TransactionCreate(TransactionBase):
-    pass
+class TransactionCreate(BaseModel):
+    amount: Decimal
+    category_id: int
+    description: str
+    occurred_on: date
 
 
 class TransactionUpdate(BaseModel):
-    transaction_type: TransactionType | None = None
     amount: Decimal | None = None
     category_id: int | None = None
     description: str | None = None

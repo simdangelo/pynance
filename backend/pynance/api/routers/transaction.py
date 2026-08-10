@@ -22,7 +22,6 @@ from pynance.services.exceptions import (
     CategoryNotFoundError,
     MonthWithoutYearError,
     TransactionNotFoundError,
-    TransactionTypeMismatchError,
 )
 
 router = APIRouter()
@@ -37,11 +36,6 @@ def create_transaction(
     except CategoryNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Category doesn't exist"
-        ) from e
-    except TransactionTypeMismatchError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Transaction type does not match category type",
         ) from e
     return result
 
@@ -119,11 +113,6 @@ def update_transaction(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Category doesn't exist"
         ) from e
-    except TransactionTypeMismatchError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Transaction type does not match category type",
-        ) from e
     return result
 
 
@@ -143,12 +132,9 @@ def list_transactions(
     q: str | None = None,
     year: int | None = None,
     month: int | None = None,
-    transaction_type: TransactionType | None = None,
     category_id: int | None = None,
 ) -> list[Transaction]:
-    filter_params = transaction_service.TransactionFilters(
-        q, year, month, transaction_type, category_id
-    )
+    filter_params = transaction_service.TransactionFilters(q, year, month, category_id)
     try:
         return transaction_service.list_transactions(db, filter_params)
     except MonthWithoutYearError as e:

@@ -59,7 +59,6 @@ def create_category(client: TestClient, name: str, transaction_type: str) -> dic
 def create_transaction(
     client: TestClient,
     *,
-    transaction_type: str,
     amount: str,
     category_id: int,
     description: str,
@@ -68,7 +67,6 @@ def create_transaction(
     response = client.post(
         "/api/transactions",
         json={
-            "transaction_type": transaction_type,
             "amount": amount,
             "category_id": category_id,
             "description": description,

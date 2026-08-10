@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import { api, ApiError } from "@/lib/api"
+import { api } from "@/lib/api"
 import type { Transaction, TransactionType } from "@/types/api"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -29,11 +30,22 @@ interface TransactionDialogProps {
   transaction?: Transaction | null
 }
 
+function TypeBadge({ type }: { type: TransactionType }) {
+  return type === "income" ? (
+    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
+      income
+    </Badge>
+  ) : (
+    <Badge variant="secondary" className="bg-rose-50 text-rose-700">
+      expense
+    </Badge>
+  )
+}
+
 export function TransactionDialog({ open, onOpenChange, transaction }: TransactionDialogProps) {
   const queryClient = useQueryClient()
   const isEditing = Boolean(transaction)
 
-  const [transactionType, setTransactionType] = useState<TransactionType>("expense")
   const [amount, setAmount] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [description, setDescription] = useState("")
@@ -46,7 +58,6 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
 
   useEffect(() => {
     if (open) {
-      setTransactionType(transaction?.transaction_type ?? "expense")
       setAmount(transaction?.amount ?? "")
       setCategoryId(transaction ? String(transaction.category_id) : "")
       setDescription(transaction?.description ?? "")
@@ -54,11 +65,12 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
     }
   }, [open, transaction])
 
-  const filteredCategories =
-    categories?.filter((c) => c.transaction_type === transactionType) ?? []
+  const selectedCategory = useMemo(
+    () => categories?.find((c) => String(c.id) === categoryId),
+    [categories, categoryId],
+  )
 
-  const mutation = useMutation({
-    mutationFn: (data: unknown) =>
+  const mutation = useMutation({    mutationFn: (data: unknown) =>
       isEditing && transaction
         ? api.transactions.update(transaction.id, data)
         : api.transactions.create(data),
@@ -66,19 +78,12 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
       queryClient.invalidateQueries({ queryKey: ["transactions"] })
       onOpenChange(false)
     },
-    onError: (error: Error) => {
-      const message =
-        error instanceof ApiError && error.status === 422
-          ? "The transaction type does not match the selected category"
-          : "Failed to save transaction"
-      toast.error(message)
-    },
+    onError: () => toast.error("Failed to save transaction"),
   })
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     mutation.mutate({
-      transaction_type: transactionType,
       amount,
       category_id: Number(categoryId),
       description,
@@ -98,39 +103,6 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Type</Label>
-              <Select
-                value={transactionType}
-                onValueChange={(v) => {
-                  setTransactionType(v as TransactionType)
-                  setCategoryId("")
-                }}
-              >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="expense">expense</SelectItem>
-                  <SelectItem value="income">income</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Amount</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="mt-1.5 font-numeric"
-              />
-            </div>
-          </div>
           <div>
             <Label>Category</Label>
             <Select
@@ -142,20 +114,40 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
             >
               <SelectTrigger className="mt-1.5">
                 <SelectValue>
-                  {categoryId
-                    ? filteredCategories.find((c) => String(c.id) === categoryId)?.name ??
-                      "Select a category"
-                    : "Select a category"}
+                  {selectedCategory ? (
+                    <span className="flex items-center gap-2">
+                      {selectedCategory.name}
+                      <TypeBadge type={selectedCategory.transaction_type} />
+                    </span>
+                  ) : (
+                    "Select a category"
+                  )}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {filteredCategories.map((category) => (
+                {categories?.map((category) => (
                   <SelectItem key={category.id} value={String(category.id)}>
-                    {category.name}
+                    <span className="flex items-center gap-2">
+                      {category.name}
+                      <TypeBadge type={category.transaction_type} />
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label>Amount</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              className="mt-1.5 font-numeric"
+            />
           </div>
           <div>
             <Label>Description</Label>

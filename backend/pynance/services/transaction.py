@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import ColumnElement, and_, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from pynance.models.category import Category
 from pynance.models.transaction import Transaction
@@ -111,7 +111,12 @@ def list_transactions(db: Session, filter_params: TransactionFilters) -> list[Tr
     if not filter_params.year and filter_params.month:
         raise MonthWithoutYearError("Cannot filter month without year")
 
-    query = select(Transaction).where(*conditions).order_by(Transaction.occurred_on.desc())
+    query = (
+        select(Transaction)
+        .options(selectinload(Transaction.category))
+        .where(*conditions)
+        .order_by(Transaction.occurred_on.desc())
+    )
     return list(db.execute(query).scalars().all())
 
 

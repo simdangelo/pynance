@@ -37,7 +37,7 @@ export default function Dashboard() {
 
   const { data: transactions, isLoading, isError } = useQuery({
     queryKey: ["transactions"],
-    queryFn: api.transactions.list,
+    queryFn: () => api.transactions.list(),
   })
 
   const recent = useMemo(() => {

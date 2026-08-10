@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Search, Trash2 } from "lucide-react"
 
 import { api } from "@/lib/api"
 import type { Transaction, TransactionType } from "@/types/api"
@@ -11,6 +11,14 @@ import { TransactionDialog } from "@/components/transaction-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -37,25 +45,28 @@ export default function Transactions() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
+  const [q, setQ] = useState("")
+  const [type, setType] = useState<TransactionType | "all">("all")
+  const [categoryId, setCategoryId] = useState<number | "all">("all")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Transaction | null>(null)
 
   const { data: transactions, isLoading, isError } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: api.transactions.list,
+    queryKey: ["transactions", { year, month, q, type, categoryId }],
+    queryFn: () =>
+      api.transactions.list({
+        year,
+        month,
+        q: q || undefined,
+        transaction_type: type === "all" ? undefined : type,
+        category_id: categoryId === "all" ? undefined : categoryId,
+      }),
   })
 
   const { data: categories, isError: categoriesError } = useQuery({
     queryKey: ["categories"],
     queryFn: api.categories.list,
   })
-
-  const monthTransactions = useMemo(() => {
-    const prefix = `${year}-${String(month).padStart(2, "0")}`
-    return (transactions ?? [])
-      .filter((t) => t.occurred_on.startsWith(prefix))
-      .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on))
-  }, [transactions, year, month])
 
   const categoryName = (id: number) =>
     categories?.find((c) => c.id === id)?.name ?? "Unknown"
@@ -77,17 +88,56 @@ export default function Transactions() {
             Record and manage your income and expenses.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <MonthPicker year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setDialogOpen(true)
-            }}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Add
-          </Button>
+        <Button
+          onClick={() => {
+            setEditing(null)
+            setDialogOpen(true)
+          }}
+        >
+          <Plus className="mr-1 h-4 w-4" /> Add
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <MonthPicker year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search description..."
+            className="pl-9"
+          />
         </div>
+        <Select
+          value={type}
+          onValueChange={(v) => setType(v as TransactionType | "all")}
+        >
+          <SelectTrigger className="w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value="income">income</SelectItem>
+            <SelectItem value="expense">expense</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={String(categoryId)}
+          onValueChange={(v) => setCategoryId(v === "all" ? "all" : Number(v))}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {categories?.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -99,8 +149,8 @@ export default function Transactions() {
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : isError || categoriesError ? (
             <p className="text-sm text-destructive">Failed to load transactions.</p>
-          ) : monthTransactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No transactions this month.</p>
+          ) : !transactions || transactions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No transactions match the filters.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -113,7 +163,7 @@ export default function Transactions() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {monthTransactions.map((t) => (
+                {transactions.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-numeric text-sm">{t.occurred_on}</TableCell>
                     <TableCell>{t.description}</TableCell>

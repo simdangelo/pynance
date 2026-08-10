@@ -1,13 +1,21 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { Trash2 } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 
 import { api, ApiError } from "@/lib/api"
 import type { Category, TransactionType } from "@/types/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -34,6 +42,9 @@ export default function Categories() {
   const queryClient = useQueryClient()
   const [name, setName] = useState("")
   const [type, setType] = useState<TransactionType>("expense")
+  const [editing, setEditing] = useState<Category | null>(null)
+  const [editName, setEditName] = useState("")
+  const [editType, setEditType] = useState<TransactionType>("expense")
 
   const { data: categories, isLoading, isError } = useQuery({
     queryKey: ["categories"],
@@ -55,6 +66,25 @@ export default function Categories() {
     },
   })
 
+  const updateMutation = useMutation({
+    mutationFn: (data: { id: number; name?: string; transaction_type?: string }) =>
+      api.categories.update(data.id, {
+        name: data.name,
+        transaction_type: data.transaction_type,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] })
+      setEditing(null)
+    },
+    onError: (error: Error) => {
+      const message =
+        error instanceof ApiError && error.status === 409
+          ? "A category with this name already exists"
+          : "Failed to update category"
+      toast.error(message)
+    },
+  })
+
   const deleteMutation = useMutation({
     mutationFn: api.categories.remove,
     onSuccess: () => {
@@ -68,6 +98,12 @@ export default function Categories() {
       toast.error(message)
     },
   })
+
+  const openEdit = (category: Category) => {
+    setEditing(category)
+    setEditName(category.name)
+    setEditType(category.transaction_type)
+  }
 
   return (
     <div className="space-y-6">
@@ -141,15 +177,25 @@ export default function Categories() {
                     <span className="font-medium">{category.name}</span>
                     <TypeBadge type={category.transaction_type} />
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Delete ${category.name}`}
-                    onClick={() => deleteMutation.mutate(category.id)}
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Edit ${category.name}`}
+                      onClick={() => openEdit(category)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Delete ${category.name}`}
+                      onClick={() => deleteMutation.mutate(category.id)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -158,6 +204,58 @@ export default function Categories() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit category</DialogTitle>
+            <DialogDescription>Rename or change the type of the category.</DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (editing && editName.trim()) {
+                updateMutation.mutate({
+                  id: editing.id,
+                  name: editName.trim(),
+                  transaction_type: editType,
+                })
+              }
+            }}
+          >
+            <div>
+              <Label>Name</Label>
+              <Input
+                required
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label>Type</Label>
+              <Select value={editType} onValueChange={(v) => setEditType(v as TransactionType)}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="expense">expense</SelectItem>
+                  <SelectItem value="income">income</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

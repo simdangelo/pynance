@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from pynance.api.main import app
 from pynance.database import Base, get_db
 from pynance.models.category import Category
+from pynance.models.recurring_template import RecurringTemplate
 from pynance.models.transaction import Transaction
 
 engine = create_engine(
@@ -31,6 +32,7 @@ def setup_database() -> Generator[None]:
 def db_session(setup_database: Generator[None]) -> Generator[Session]:
     session = TestingSessionLocal()
     session.execute(delete(Transaction))
+    session.execute(delete(RecurringTemplate))
     session.execute(delete(Category))
     session.commit()
     yield session
@@ -71,6 +73,33 @@ def create_transaction(
             "category_id": category_id,
             "description": description,
             "occurred_on": occurred_on,
+        },
+    )
+    assert response.status_code == 201, response.text
+    return cast("dict[str, Any]", response.json())
+
+
+def create_recurring_template(
+    client: TestClient,
+    *,
+    description: str,
+    amount: str,
+    category_id: int,
+    frequency: str,
+    interval: int = 1,
+    next_occurrence: str,
+    active: bool = True,
+) -> dict[str, Any]:
+    response = client.post(
+        "/api/recurring-template",
+        json={
+            "description": description,
+            "amount": amount,
+            "category_id": category_id,
+            "frequency": frequency,
+            "interval": interval,
+            "next_occurrence": next_occurrence,
+            "active": active,
         },
     )
     assert response.status_code == 201, response.text

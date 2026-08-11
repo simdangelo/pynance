@@ -9,7 +9,7 @@ Status legend: `planned` → `in progress` → `done`.
 
 ---
 
-## 1. Recurring transactions — `planned`
+## 1. Recurring transactions — `in progress`
 
 **Goal:** record payments/income that repeat (rent, salary, subscriptions)
 without re-entering them.
@@ -25,12 +25,14 @@ without re-entering them.
   `next_occurrence` and `overdue` (`next_occurrence < today`), so the
   frontend can show "Rent is overdue — record it?" without computing business
   logic itself.
+- Frequencies: monthly/weekly/yearly + custom interval. Generate-next
+  advances the template's pointer. Generated rows are fully independent of
+  the template. (All confirmed at module start; wiki: `04-recurring-transactions.md`.)
 
 **Dependencies:** only `Transaction` + `Category` (no assets needed).
 
 **Design questions open:** whether a template targets an asset once assets
-exist (slot left for it); what frequencies to support (monthly/weekly/yearly
-+ custom).
+exist (slot left for it).
 
 ---
 

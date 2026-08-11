@@ -30,6 +30,14 @@ interface TransactionDialogProps {
   transaction?: Transaction | null
 }
 
+function todayLocalISO(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 function TypeBadge({ type }: { type: TransactionType }) {
   return type === "income" ? (
     <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
@@ -61,7 +69,7 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
       setAmount(transaction?.amount ?? "")
       setCategoryId(transaction ? String(transaction.category_id) : "")
       setDescription(transaction?.description ?? "")
-      setOccurredOn(transaction?.occurred_on ?? new Date().toISOString().slice(0, 10))
+      setOccurredOn(transaction?.occurred_on ?? todayLocalISO())
     }
   }, [open, transaction])
 

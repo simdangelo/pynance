@@ -16,3 +16,11 @@ class CategoryHasTransactionsError(Exception):
 
 class MonthWithoutYearError(Exception):
     pass
+
+
+class RecurringTemplateNotFoundError(Exception):
+    pass
+
+
+class PausedTemplateError(Exception):
+    pass

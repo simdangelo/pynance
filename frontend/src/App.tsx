@@ -3,6 +3,7 @@ import { Layout } from "@/components/layout"
 import Dashboard from "@/pages/dashboard"
 import Transactions from "@/pages/transactions"
 import Categories from "@/pages/categories"
+import Recurring from "@/pages/recurring"
 
 export default function App() {
   return (
@@ -10,6 +11,7 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/transactions" element={<Transactions />} />
+        <Route path="/recurring" element={<Recurring />} />
         <Route path="/categories" element={<Categories />} />
       </Route>
     </Routes>

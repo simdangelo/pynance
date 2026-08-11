@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { api } from "@/lib/api"
+import { todayLocalISO } from "@/lib/utils"
 import type { Transaction, TransactionType } from "@/types/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,14 +29,6 @@ interface TransactionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   transaction?: Transaction | null
-}
-
-function todayLocalISO(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, "0")
-  const day = String(now.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
 }
 
 function TypeBadge({ type }: { type: TransactionType }) {

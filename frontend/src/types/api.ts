@@ -1,5 +1,7 @@
 export type TransactionType = "income" | "expense"
 
+export type Frequency = "yearly" | "monthly" | "weekly" | "custom"
+
 export interface Category {
   id: number
   name: string
@@ -50,4 +52,27 @@ export interface TrendByCategory {
 export interface Comparison {
   current: Summary
   previous: Summary
+}
+
+export interface RecurringTemplate {
+  id: number
+  description: string
+  amount: string
+  category_id: number
+  frequency: Frequency
+  interval: number
+  next_occurrence: string
+  active: boolean
+  created_at: string
+  due: boolean
+}
+
+export interface RecurringTemplateInput {
+  description: string
+  amount: string
+  category_id: number
+  frequency: Frequency
+  interval: number
+  next_occurrence: string
+  active: boolean
 }

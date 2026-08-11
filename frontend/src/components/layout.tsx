@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 const navItems = [
   { to: "/", label: "Dashboard" },
   { to: "/transactions", label: "Transactions" },
+  { to: "/recurring", label: "Recurring" },
   { to: "/categories", label: "Categories" },
 ]
 

@@ -5,7 +5,9 @@ import { Pencil, Trash2 } from "lucide-react"
 
 import { api, ApiError } from "@/lib/api"
 import type { Category, TransactionType } from "@/types/api"
-import { Badge } from "@/components/ui/badge"
+import { PageHeader } from "@/components/page-header"
+import { TypeBadge } from "@/components/type-badge"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -26,18 +28,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-function TypeBadge({ type }: { type: TransactionType }) {
-  return type === "income" ? (
-    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
-      income
-    </Badge>
-  ) : (
-    <Badge variant="secondary" className="bg-rose-50 text-rose-700">
-      expense
-    </Badge>
-  )
-}
-
 export default function Categories() {
   const queryClient = useQueryClient()
   const [name, setName] = useState("")
@@ -45,6 +35,7 @@ export default function Categories() {
   const [editing, setEditing] = useState<Category | null>(null)
   const [editName, setEditName] = useState("")
   const [editType, setEditType] = useState<TransactionType>("expense")
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
 
   const { data: categories, isLoading, isError } = useQuery({
     queryKey: ["categories"],
@@ -107,12 +98,7 @@ export default function Categories() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Categories</h1>
-        <p className="mt-1 text-muted-foreground">
-          The categories used to tag your transactions.
-        </p>
-      </div>
+      <PageHeader title="Categories" subtitle="The categories used to tag your transactions." />
 
       <Card>
         <CardHeader>
@@ -145,8 +131,8 @@ export default function Categories() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="expense">expense</SelectItem>
-                  <SelectItem value="income">income</SelectItem>
+                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -190,8 +176,7 @@ export default function Categories() {
                       variant="ghost"
                       size="icon"
                       aria-label={`Delete ${category.name}`}
-                      onClick={() => deleteMutation.mutate(category.id)}
-                      disabled={deleteMutation.isPending}
+                      onClick={() => setDeleteTarget(category)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -240,8 +225,8 @@ export default function Categories() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="expense">expense</SelectItem>
-                  <SelectItem value="income">income</SelectItem>
+                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -256,6 +241,18 @@ export default function Categories() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete category?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.name}" will be permanently removed. Categories with transactions cannot be deleted.`
+            : undefined
+        }
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+      />
     </div>
   )
 }

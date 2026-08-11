@@ -4,8 +4,9 @@ import { toast } from "sonner"
 
 import { api } from "@/lib/api"
 import { todayLocalISO } from "@/lib/utils"
-import type { Frequency, RecurringTemplate, TransactionType } from "@/types/api"
-import { Badge } from "@/components/ui/badge"
+import type { Frequency, RecurringTemplate } from "@/types/api"
+import { TypeBadge } from "@/components/type-badge"
+import { frequencyLabel } from "@/components/frequency-label"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -32,18 +33,6 @@ interface RecurringDialogProps {
 }
 
 const FREQUENCIES: Frequency[] = ["monthly", "weekly", "yearly", "custom"]
-
-function TypeBadge({ type }: { type: TransactionType }) {
-  return type === "income" ? (
-    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
-      income
-    </Badge>
-  ) : (
-    <Badge variant="secondary" className="bg-rose-50 text-rose-700">
-      expense
-    </Badge>
-  )
-}
 
 export function RecurringDialog({ open, onOpenChange, template }: RecurringDialogProps) {
   const queryClient = useQueryClient()
@@ -142,7 +131,7 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
                   )}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="min-w-[240px]">
                 {categories?.map((category) => (
                   <SelectItem key={category.id} value={String(category.id)}>
                     <span className="flex items-center gap-2">
@@ -182,12 +171,12 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
               <Label>Frequency</Label>
               <Select value={frequency} onValueChange={(v) => setFrequency(v as Frequency)}>
                 <SelectTrigger className="mt-1.5">
-                  <SelectValue />
+                  <SelectValue>{frequencyLabel(frequency, Number(interval) || 1)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {FREQUENCIES.map((f) => (
                     <SelectItem key={f} value={f}>
-                      {f}
+                      {f.charAt(0).toUpperCase() + f.slice(1)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -206,13 +195,7 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
                 aria-label="Interval"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                {frequency === "custom"
-                  ? "every N weeks"
-                  : frequency === "weekly"
-                    ? "every N weeks"
-                    : frequency === "monthly"
-                      ? "every N months"
-                      : "every N years"}
+                {frequencyLabel(frequency, Number(interval) || 2)}
               </p>
             </div>
           </div>
@@ -231,7 +214,7 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
             <Label>Status</Label>
             <Select value={active} onValueChange={(v) => { if (v) setActive(v) }}>
               <SelectTrigger className="mt-1.5">
-                <SelectValue />
+                <SelectValue>{active === "true" ? "Active" : "Paused"}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="true">Active</SelectItem>

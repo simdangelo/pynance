@@ -4,9 +4,13 @@ import { toast } from "sonner"
 import { Pencil, Play, Plus, Trash2 } from "lucide-react"
 
 import { api, ApiError } from "@/lib/api"
-import type { Category, Frequency, RecurringTemplate, TransactionType } from "@/types/api"
+import type { Category, RecurringTemplate } from "@/types/api"
 import { Money } from "@/components/money"
+import { frequencyLabel } from "@/components/frequency-label"
+import { PageHeader } from "@/components/page-header"
 import { RecurringDialog } from "@/components/recurring-dialog"
+import { TypeBadge } from "@/components/type-badge"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,31 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-function TypeBadge({ type }: { type: TransactionType }) {
-  return type === "income" ? (
-    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
-      income
-    </Badge>
-  ) : (
-    <Badge variant="secondary" className="bg-rose-50 text-rose-700">
-      expense
-    </Badge>
-  )
-}
-
-const FREQUENCY_UNIT: Record<Frequency, string> = {
-  monthly: "month",
-  weekly: "week",
-  yearly: "year",
-  custom: "week",
-}
-
-function frequencyLabel(frequency: Frequency, interval: number): string {
-  if (interval === 1) return frequency
-  const plural = interval > 1 ? "s" : ""
-  return `every ${interval} ${FREQUENCY_UNIT[frequency]}${plural}`
-}
 
 function CategoryCell({
   categoryId,
@@ -64,20 +43,20 @@ function StatusBadge({ template }: { template: RecurringTemplate }) {
   if (!template.active) {
     return (
       <Badge variant="secondary" className="bg-muted text-muted-foreground">
-        paused
+        Paused
       </Badge>
     )
   }
   if (!template.due) {
     return (
       <Badge variant="secondary" className="bg-sky-50 text-sky-700">
-        scheduled
+        Scheduled
       </Badge>
     )
   }
   return (
     <Badge variant="destructive" className="bg-amber-50 text-amber-700">
-      overdue
+      Overdue
     </Badge>
   )
 }
@@ -86,6 +65,7 @@ export default function Recurring() {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<RecurringTemplate | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<RecurringTemplate | null>(null)
 
   const { data: templates, isLoading, isError } = useQuery({
     queryKey: ["recurring"],
@@ -123,22 +103,20 @@ export default function Recurring() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Recurring</h1>
-          <p className="mt-1 text-muted-foreground">
-            Templates that generate transactions when they happen.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null)
-            setDialogOpen(true)
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" /> Add
-        </Button>
-      </div>
+      <PageHeader
+        title="Recurring"
+        subtitle="Templates that generate transactions when they happen."
+        action={
+          <Button
+            onClick={() => {
+              setEditing(null)
+              setDialogOpen(true)
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Add
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -157,17 +135,19 @@ export default function Recurring() {
                 <TableRow>
                   <TableHead>Description</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead>Frequency</TableHead>
-                  <TableHead>Next occurrence</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[110px]">Frequency</TableHead>
+                  <TableHead className="w-[130px]">Next occurrence</TableHead>
+                  <TableHead className="w-[120px] text-right">Amount</TableHead>
+                  <TableHead className="w-[90px]">Status</TableHead>
                   <TableHead className="w-[120px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {templates.map((template) => (
                   <TableRow key={template.id}>
-                    <TableCell>{template.description}</TableCell>
+                    <TableCell>
+                      <span className="block max-w-[220px] truncate">{template.description}</span>
+                    </TableCell>
                     <TableCell>
                       <CategoryCell categoryId={template.category_id} categories={categories} />
                     </TableCell>
@@ -179,7 +159,7 @@ export default function Recurring() {
                     >
                       {template.next_occurrence}
                     </TableCell>
-                    <TableCell className="text-right font-numeric">
+                    <TableCell className="text-right">
                       <Money value={template.amount} />
                     </TableCell>
                     <TableCell>
@@ -218,8 +198,7 @@ export default function Recurring() {
                           variant="ghost"
                           size="icon"
                           aria-label="Delete template"
-                          onClick={() => deleteMutation.mutate(template.id)}
-                          disabled={deleteMutation.isPending}
+                          onClick={() => setDeleteTarget(template)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -237,6 +216,18 @@ export default function Recurring() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         template={editing}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete template?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.description}" (${frequencyLabel(deleteTarget.frequency, deleteTarget.interval)}) will be permanently removed. Existing generated transactions are kept.`
+            : undefined
+        }
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
       />
     </div>
   )

@@ -13,6 +13,9 @@ interface MoneyProps {
 
 export function Money({ value, className }: MoneyProps) {
   const amount = Number(value)
+  if (Number.isNaN(amount)) {
+    return <span className={cn("font-numeric tabular-nums", className)}>—</span>
+  }
   const sign = amount > 0 ? "+" : ""
   return (
     <span className={cn("font-numeric tabular-nums", className)}>

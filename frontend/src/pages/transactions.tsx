@@ -7,8 +7,10 @@ import { api } from "@/lib/api"
 import type { Transaction, TransactionType } from "@/types/api"
 import { Money } from "@/components/money"
 import { MonthPicker } from "@/components/month-picker"
+import { PageHeader } from "@/components/page-header"
 import { TransactionDialog } from "@/components/transaction-dialog"
-import { Badge } from "@/components/ui/badge"
+import { TypeBadge } from "@/components/type-badge"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -28,18 +30,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-function TypeBadge({ type }: { type: TransactionType }) {
-  return type === "income" ? (
-    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
-      income
-    </Badge>
-  ) : (
-    <Badge variant="secondary" className="bg-rose-50 text-rose-700">
-      expense
-    </Badge>
-  )
-}
-
 export default function Transactions() {
   const queryClient = useQueryClient()
   const now = new Date()
@@ -50,6 +40,7 @@ export default function Transactions() {
   const [categoryId, setCategoryId] = useState<number | "all">("all")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Transaction | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
 
   const { data: transactions, isLoading, isError } = useQuery({
     queryKey: ["transactions", { year, month, q, type, categoryId }],
@@ -81,22 +72,20 @@ export default function Transactions() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Transactions</h1>
-          <p className="mt-1 text-muted-foreground">
-            Record and manage your income and expenses.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null)
-            setDialogOpen(true)
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" /> Add
-        </Button>
-      </div>
+      <PageHeader
+        title="Transactions"
+        subtitle="Record and manage your income and expenses."
+        action={
+          <Button
+            onClick={() => {
+              setEditing(null)
+              setDialogOpen(true)
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Add
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-end gap-3">
         <MonthPicker year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
@@ -118,8 +107,8 @@ export default function Transactions() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All types</SelectItem>
-            <SelectItem value="income">income</SelectItem>
-            <SelectItem value="expense">expense</SelectItem>
+            <SelectItem value="income">Income</SelectItem>
+            <SelectItem value="expense">Expense</SelectItem>
           </SelectContent>
         </Select>
         <Select
@@ -129,7 +118,7 @@ export default function Transactions() {
           <SelectTrigger className="w-[180px]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="min-w-[240px]">
             <SelectItem value="all">All categories</SelectItem>
             {categories?.map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>
@@ -155,10 +144,10 @@ export default function Transactions() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[110px]">Date</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-[120px] text-right">Amount</TableHead>
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -166,7 +155,9 @@ export default function Transactions() {
                 {transactions.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-numeric text-sm">{t.occurred_on}</TableCell>
-                    <TableCell>{t.description}</TableCell>
+                    <TableCell>
+                      <span className="block max-w-[280px] truncate">{t.description}</span>
+                    </TableCell>
                     <TableCell>
                       <span className="flex items-center gap-2">
                         {categoryName(t.category_id)}
@@ -198,8 +189,7 @@ export default function Transactions() {
                           variant="ghost"
                           size="icon"
                           aria-label="Delete transaction"
-                          onClick={() => deleteMutation.mutate(t.id)}
-                          disabled={deleteMutation.isPending}
+                          onClick={() => setDeleteTarget(t)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -217,6 +207,18 @@ export default function Transactions() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         transaction={editing}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete transaction?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.description}" (${deleteTarget.amount} on ${deleteTarget.occurred_on}) will be permanently removed.`
+            : undefined
+        }
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
       />
     </div>
   )

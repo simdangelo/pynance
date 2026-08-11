@@ -4,8 +4,8 @@ import { toast } from "sonner"
 
 import { api } from "@/lib/api"
 import { todayLocalISO } from "@/lib/utils"
-import type { Transaction, TransactionType } from "@/types/api"
-import { Badge } from "@/components/ui/badge"
+import type { Transaction } from "@/types/api"
+import { TypeBadge } from "@/components/type-badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -29,18 +29,6 @@ interface TransactionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   transaction?: Transaction | null
-}
-
-function TypeBadge({ type }: { type: TransactionType }) {
-  return type === "income" ? (
-    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
-      income
-    </Badge>
-  ) : (
-    <Badge variant="secondary" className="bg-rose-50 text-rose-700">
-      expense
-    </Badge>
-  )
 }
 
 export function TransactionDialog({ open, onOpenChange, transaction }: TransactionDialogProps) {
@@ -125,7 +113,7 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
                   )}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="min-w-[240px]">
                 {categories?.map((category) => (
                   <SelectItem key={category.id} value={String(category.id)}>
                     <span className="flex items-center gap-2">

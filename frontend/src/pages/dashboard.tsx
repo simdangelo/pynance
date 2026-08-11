@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { api } from "@/lib/api"
 import { Money } from "@/components/money"
 import { MonthPicker } from "@/components/month-picker"
+import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   ChartContainer,
@@ -59,13 +60,13 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="mt-1 text-muted-foreground">Your monthly overview.</p>
-        </div>
-        <MonthPicker year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
-      </div>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Your monthly overview."
+        action={
+          <MonthPicker year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
@@ -156,16 +157,18 @@ export default function Dashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[110px]">Date</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-[120px] text-right">Amount</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recent.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-numeric text-sm">{t.occurred_on}</TableCell>
-                    <TableCell>{t.description}</TableCell>
+                    <TableCell>
+                      <span className="block max-w-[280px] truncate">{t.description}</span>
+                    </TableCell>
                     <TableCell className="text-right">
                       <Money
                         value={t.amount}

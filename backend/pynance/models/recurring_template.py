@@ -29,5 +29,5 @@ class RecurringTemplate(Base):
     )
 
     @property
-    def overdue(self) -> bool:
-        return self.next_occurrence < datetime.now(UTC).date()
+    def due(self) -> bool:
+        return self.next_occurrence <= datetime.now(UTC).date()

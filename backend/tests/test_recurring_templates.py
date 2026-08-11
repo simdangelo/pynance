@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 from fastapi.testclient import TestClient
 
@@ -28,7 +28,7 @@ def test_create_recurring_template(client: TestClient) -> None:
     assert data["frequency"] == "monthly"
     assert data["next_occurrence"] == "2026-09-01"
     assert data["active"] is True
-    assert "overdue" in data
+    assert "due" in data
     assert "id" in data
 
 
@@ -139,7 +139,7 @@ def test_generate_next_creates_transaction_and_advances(client: TestClient) -> N
         amount="500.00",
         category_id=category["id"],
         frequency="monthly",
-        next_occurrence="2026-09-01",
+        next_occurrence="2026-06-01",
     )
 
     response = client.post(f"/api/recurring-template/{template['id']}/generate")
@@ -148,13 +148,13 @@ def test_generate_next_creates_transaction_and_advances(client: TestClient) -> N
     transaction = response.json()
     assert transaction["description"] == "Rent"
     assert transaction["amount"] == "500.00"
-    assert transaction["occurred_on"] == "2026-09-01"
+    assert transaction["occurred_on"] == "2026-06-01"
     assert transaction["transaction_type"] == "expense"
 
     assert client.get(f"/api/transactions/{transaction['id']}").status_code == 200
 
     templates = client.get("/api/recurring-template").json()
-    assert templates[0]["next_occurrence"] == "2026-10-01"
+    assert templates[0]["next_occurrence"] == "2026-07-01"
 
 
 def test_generate_next_weekly_advances_by_week(client: TestClient) -> None:
@@ -165,14 +165,14 @@ def test_generate_next_weekly_advances_by_week(client: TestClient) -> None:
         amount="30.00",
         category_id=category["id"],
         frequency="weekly",
-        next_occurrence="2026-09-01",
+        next_occurrence="2026-06-01",
     )
 
     response = client.post(f"/api/recurring-template/{template['id']}/generate")
 
     assert response.status_code == 201
     templates = client.get("/api/recurring-template").json()
-    assert templates[0]["next_occurrence"] == "2026-09-08"
+    assert templates[0]["next_occurrence"] == "2026-06-08"
 
 
 def test_generate_next_custom_interval_advances_by_interval_weeks(client: TestClient) -> None:
@@ -184,14 +184,14 @@ def test_generate_next_custom_interval_advances_by_interval_weeks(client: TestCl
         category_id=category["id"],
         frequency="custom",
         interval=2,
-        next_occurrence="2026-09-01",
+        next_occurrence="2026-06-01",
     )
 
     response = client.post(f"/api/recurring-template/{template['id']}/generate")
 
     assert response.status_code == 201
     templates = client.get("/api/recurring-template").json()
-    assert templates[0]["next_occurrence"] == "2026-09-15"
+    assert templates[0]["next_occurrence"] == "2026-06-15"
 
 
 def test_generate_next_paused_template_returns_409(client: TestClient) -> None:
@@ -211,6 +211,24 @@ def test_generate_next_paused_template_returns_409(client: TestClient) -> None:
     assert response.status_code == 409
 
 
+def test_generate_next_not_due_returns_409(client: TestClient) -> None:
+    category = create_category(client, "groceries", "expense")
+    template = create_recurring_template(
+        client,
+        description="Rent",
+        amount="500.00",
+        category_id=category["id"],
+        frequency="monthly",
+        next_occurrence="2099-01-01",
+    )
+
+    response = client.post(f"/api/recurring-template/{template['id']}/generate")
+
+    assert response.status_code == 409
+    templates = client.get("/api/recurring-template").json()
+    assert templates[0]["next_occurrence"] == "2099-01-01"
+
+
 def test_generate_next_not_found_returns_404(client: TestClient) -> None:
     response = client.post("/api/recurring-template/9999/generate")
 
@@ -225,7 +243,7 @@ def test_generate_next_twice_produces_distinct_dates(client: TestClient) -> None
         amount="500.00",
         category_id=category["id"],
         frequency="monthly",
-        next_occurrence="2026-09-01",
+        next_occurrence="2026-06-01",
     )
 
     first = client.post(f"/api/recurring-template/{template['id']}/generate")
@@ -233,12 +251,13 @@ def test_generate_next_twice_produces_distinct_dates(client: TestClient) -> None
 
     assert first.status_code == 201
     assert second.status_code == 201
-    assert first.json()["occurred_on"] == "2026-09-01"
-    assert second.json()["occurred_on"] == "2026-10-01"
+    assert first.json()["occurred_on"] == "2026-06-01"
+    assert second.json()["occurred_on"] == "2026-07-01"
 
 
-def test_overdue_flag(client: TestClient) -> None:
+def test_due_flag(client: TestClient) -> None:
     category = create_category(client, "groceries", "expense")
+    today = datetime.now(UTC).date()
     create_recurring_template(
         client,
         description="Past due",
@@ -246,6 +265,14 @@ def test_overdue_flag(client: TestClient) -> None:
         category_id=category["id"],
         frequency="monthly",
         next_occurrence="2020-01-01",
+    )
+    create_recurring_template(
+        client,
+        description="Due today",
+        amount="10.00",
+        category_id=category["id"],
+        frequency="monthly",
+        next_occurrence=today.isoformat(),
     )
     create_recurring_template(
         client,
@@ -259,8 +286,9 @@ def test_overdue_flag(client: TestClient) -> None:
     templates = client.get("/api/recurring-template").json()
     by_description = {template["description"]: template for template in templates}
 
-    assert by_description["Past due"]["overdue"] is True
-    assert by_description["Future"]["overdue"] is False
+    assert by_description["Past due"]["due"] is True
+    assert by_description["Due today"]["due"] is True
+    assert by_description["Future"]["due"] is False
 
 
 def test_monthly_generation_clamps_end_of_month(client: TestClient) -> None:

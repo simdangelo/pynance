@@ -33,6 +33,6 @@ class RecurringTemplateUpdate(BaseModel):
 class RecurringTemplateResponse(RecurringTemplateBase):
     id: int
     created_at: datetime
-    overdue: bool
+    due: bool
 
     model_config = ConfigDict(from_attributes=True)

@@ -24,3 +24,7 @@ class RecurringTemplateNotFoundError(Exception):
 
 class PausedTemplateError(Exception):
     pass
+
+
+class NextOccurrenceNotDueError(Exception):
+    pass

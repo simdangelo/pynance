@@ -21,10 +21,10 @@ without re-entering them.
 - **Generation is on-demand, not automatic** — the user triggers "generate
   next occurrence". No scheduler, no silent duplication. Skipping a month is
   trivial.
-- **Overdue detection is a backend-computed field**: each template exposes
-  `next_occurrence` and `overdue` (`next_occurrence < today`), so the
-  frontend can show "Rent is overdue — record it?" without computing business
-  logic itself.
+- **Due detection is a backend-computed field**: each template exposes
+  `next_occurrence` and `due` (`next_occurrence <= today`), so the frontend
+  can show "Rent is due — record it?" without computing business logic
+  itself.
 - Frequencies: monthly/weekly/yearly + custom interval. Generate-next
   advances the template's pointer. Generated rows are fully independent of
   the template. (All confirmed at module start; wiki: `04-recurring-transactions.md`.)

@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import select
@@ -14,6 +14,7 @@ from pynance.schemas.recurring_template import (
 )
 from pynance.services.exceptions import (
     CategoryNotFoundError,
+    NextOccurrenceNotDueError,
     PausedTemplateError,
     RecurringTemplateNotFoundError,
 )
@@ -99,6 +100,11 @@ def generate_next(db: Session, recurring_template_id: int) -> Transaction:
         )
     if not template.active:
         raise PausedTemplateError("A paused template cannot generate transactions")
+
+    if template.next_occurrence > datetime.now(UTC).date():
+        raise NextOccurrenceNotDueError(
+            f"Next occurrence '{template.next_occurrence}' is not due yet"
+        )
 
     new_transaction = Transaction(
         amount=template.amount,

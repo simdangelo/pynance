@@ -1,44 +1,71 @@
-import { NavLink, Outlet } from "react-router-dom"
+import { useState } from "react"
+import { Outlet } from "react-router-dom"
+import { Menu, X } from "lucide-react"
+
+import { SidebarNav } from "@/components/sidebar-nav"
 import { Toaster } from "@/components/ui/sonner"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-const navItems = [
-  { to: "/", label: "Dashboard" },
-  { to: "/transactions", label: "Transactions" },
-  { to: "/recurring", label: "Recurring" },
-  { to: "/assets", label: "Assets" },
-  { to: "/categories", label: "Categories" },
-]
-
 export function Layout() {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-neutral-50">
-      <header className="border-b border-border bg-background">
-        <div className="mx-auto flex h-14 max-w-5xl flex-wrap items-center justify-between gap-2 px-4">
+      {/* Desktop sidebar */}
+      <aside className="fixed left-0 top-0 bottom-0 z-30 hidden w-60 border-r border-border bg-background md:flex md:flex-col">
+        <div className="flex h-14 items-center px-4">
           <span className="font-semibold tracking-tight">Pynance</span>
-          <nav className="flex items-center gap-1">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/"}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
         </div>
+        <SidebarNav />
+      </aside>
+
+      {/* Mobile top bar */}
+      <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4 md:hidden">
+        <span className="font-semibold tracking-tight">Pynance</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Open navigation"
+          onClick={() => setDrawerOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        <Outlet />
+
+      {/* Mobile drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <aside
+            className={cn(
+              "absolute left-0 top-0 bottom-0 w-64 bg-background shadow-lg",
+            )}
+          >
+            <div className="flex h-14 items-center justify-between px-4">
+              <span className="font-semibold tracking-tight">Pynance</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Close navigation"
+                onClick={() => setDrawerOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <SidebarNav onNavigate={() => setDrawerOpen(false)} />
+          </aside>
+        </div>
+      )}
+
+      {/* Main content */}
+      <main className="md:ml-60">
+        <div className="mx-auto max-w-6xl px-6 py-8">
+          <Outlet />
+        </div>
       </main>
       <Toaster />
     </div>

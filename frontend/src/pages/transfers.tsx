@@ -1,7 +1,7 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { ArrowRight, Pencil, Plus, Trash2 } from "lucide-react"
+import { ArrowRight, Pencil, Plus, Search, Trash2 } from "lucide-react"
 
 import { api } from "@/lib/api"
 import type { Asset, Transfer } from "@/types/api"
@@ -12,6 +12,7 @@ import { TransferDialog } from "@/components/transfer-dialog"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -21,18 +22,29 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+const MONTH_ABBREV = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+]
+
 export default function Transfers() {
   const queryClient = useQueryClient()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
+  const [q, setQ] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Transfer | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transfer | null>(null)
 
   const { data: transfers, isLoading, isError } = useQuery({
-    queryKey: ["transfers", { year, month }],
-    queryFn: () => api.transfers.list({ year, month }),
+    queryKey: ["transfers", { year, month, q }],
+    queryFn: () => api.transfers.list({ year, month, q: q || undefined }),
+  })
+
+  const { data: yearTransfers } = useQuery({
+    queryKey: ["transfers", { year }],
+    queryFn: () => api.transfers.list({ year }),
   })
 
   const { data: assets } = useQuery({
@@ -41,6 +53,24 @@ export default function Transfers() {
   })
 
   const assetName = (id: number) => assets?.find((a: Asset) => a.id === id)?.name ?? "Unknown"
+
+  const monthTotal = useMemo(
+    () =>
+      (transfers ?? [])
+        .reduce((sum, t) => sum + Number(t.amount), 0)
+        .toFixed(2),
+    [transfers],
+  )
+
+  const monthCount = transfers?.length ?? 0
+
+  const yearTotal = useMemo(
+    () =>
+      (yearTransfers ?? [])
+        .reduce((sum, t) => sum + Number(t.amount), 0)
+        .toFixed(2),
+    [yearTransfers],
+  )
 
   const deleteMutation = useMutation({
     mutationFn: api.transfers.remove,
@@ -68,8 +98,40 @@ export default function Transfers() {
         }
       />
 
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm font-medium text-muted-foreground">This month</p>
+            <Money value={monthTotal} className="text-2xl font-semibold" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm font-medium text-muted-foreground">
+              Count · {MONTH_ABBREV[month - 1]}
+            </p>
+            <p className="text-2xl font-semibold">{monthCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm font-medium text-muted-foreground">This year</p>
+            <Money value={yearTotal} className="text-2xl font-semibold" />
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="flex flex-wrap items-end gap-3">
         <MonthPicker year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search description..."
+            className="pl-9"
+          />
+        </div>
       </div>
 
       <Card>

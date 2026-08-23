@@ -1,9 +1,9 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { Pencil, Play, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Trash2 } from "lucide-react"
 
-import { api, ApiError } from "@/lib/api"
+import { api } from "@/lib/api"
 import type { Category, RecurringTemplate } from "@/types/api"
 import { Money } from "@/components/money"
 import { frequencyLabel } from "@/components/frequency-label"
@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/page-header"
 import { RecurringDialog } from "@/components/recurring-dialog"
 import { TypeBadge } from "@/components/type-badge"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { DueNowCard } from "@/components/due-now-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -61,6 +62,10 @@ function StatusBadge({ template }: { template: RecurringTemplate }) {
   )
 }
 
+function categoryType(categories: Category[] | undefined, categoryId: number) {
+  return categories?.find((c) => c.id === categoryId)?.transaction_type
+}
+
 export default function Recurring() {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -75,21 +80,6 @@ export default function Recurring() {
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: api.categories.list,
-  })
-
-  const generateMutation = useMutation({
-    mutationFn: api.recurringTemplates.generate,
-    onSuccess: (transaction) => {
-      queryClient.invalidateQueries()
-      toast.success(`Generated "${transaction.description}" for ${transaction.occurred_on}`)
-    },
-    onError: (error: Error) => {
-      const message =
-        error instanceof ApiError && error.status === 409
-          ? "Template is paused"
-          : "Failed to generate transaction"
-      toast.error(message)
-    },
   })
 
   const deleteMutation = useMutation({
@@ -117,6 +107,13 @@ export default function Recurring() {
         }
       />
 
+      <DueNowCard
+        templates={templates ?? []}
+        categories={categories}
+        isLoading={isLoading}
+        isError={isError}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Recurring templates</CardTitle>
@@ -138,7 +135,7 @@ export default function Recurring() {
                   <TableHead className="w-[130px]">Next occurrence</TableHead>
                   <TableHead className="w-[120px] text-right">Amount</TableHead>
                   <TableHead className="w-[90px]">Status</TableHead>
-                  <TableHead className="w-[120px]"></TableHead>
+                  <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -159,29 +156,24 @@ export default function Recurring() {
                       {template.next_occurrence}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Money value={template.amount} />
+                      <Money
+                        value={
+                          categoryType(categories, template.category_id) === "expense"
+                            ? (-Number(template.amount)).toFixed(2)
+                            : template.amount
+                        }
+                        className={
+                          categoryType(categories, template.category_id) === "expense"
+                            ? "text-rose-600"
+                            : "text-emerald-600"
+                        }
+                      />
                     </TableCell>
                     <TableCell>
                       <StatusBadge template={template} />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Generate ${template.description}`}
-                          onClick={() => generateMutation.mutate(template.id)}
-                          disabled={!template.active || !template.due || generateMutation.isPending}
-                          title={
-                            !template.active
-                              ? "Template is paused"
-                              : !template.due
-                                ? `Not due until ${template.next_occurrence}`
-                                : "Generate the next occurrence"
-                          }
-                        >
-                          <Play className="h-4 w-4" />
-                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

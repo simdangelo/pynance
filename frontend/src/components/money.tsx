@@ -16,10 +16,8 @@ export function Money({ value, className }: MoneyProps) {
   if (Number.isNaN(amount)) {
     return <span className={cn("font-numeric tabular-nums", className)}>—</span>
   }
-  const sign = amount > 0 ? "+" : ""
   return (
     <span className={cn("font-numeric tabular-nums", className)}>
-      {sign}
       {formatter.format(amount)}
     </span>
   )

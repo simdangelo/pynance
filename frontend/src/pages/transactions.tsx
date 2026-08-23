@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Pencil, Plus, Search, Trash2 } from "lucide-react"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { api } from "@/lib/api"
 import type { Transaction, TransactionType } from "@/types/api"
@@ -13,7 +12,7 @@ import { TransactionDialog } from "@/components/transaction-dialog"
 import { TypeBadge } from "@/components/type-badge"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -30,25 +29,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
 
 const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ]
 
 export default function Transactions() {
@@ -69,18 +53,6 @@ export default function Transactions() {
     placeholderData: keepPreviousData,
   })
 
-  const { data: comparison } = useQuery({
-    queryKey: ["comparison", year, month],
-    queryFn: () => api.transactions.comparison(year, month),
-    placeholderData: keepPreviousData,
-  })
-
-  const { data: spending, isError: spendingError } = useQuery({
-    queryKey: ["spending", year, month],
-    queryFn: () => api.transactions.summaryByCategory("expense", year, month),
-    placeholderData: keepPreviousData,
-  })
-
   const { data: transactions, isLoading, isError } = useQuery({
     queryKey: ["transactions", { year, month, q, type, categoryId }],
     queryFn: () =>
@@ -94,37 +66,13 @@ export default function Transactions() {
     placeholderData: keepPreviousData,
   })
 
-  const { data: categories, isError: categoriesError } = useQuery({
+  const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: api.categories.list,
   })
 
   const categoryName = (id: number) =>
     categories?.find((c) => c.id === id)?.name ?? "Unknown"
-
-  const netAmount = useMemo(() => {
-    if (!summary) return null
-    return (Number(summary.income) - Number(summary.expense)).toFixed(2)
-  }, [summary])
-
-  const comparisonText = useMemo(() => {
-    if (!comparison) return null
-    const prev = Number(comparison.previous.expense)
-    const cur = Number(comparison.current.expense)
-    if (prev === 0) return null
-    const delta = cur - prev
-    const sign = delta > 0 ? "+" : ""
-    return `${sign}${delta.toFixed(2)} vs last month`
-  }, [comparison])
-
-  const chartData = useMemo(
-    () =>
-      (spending ?? []).map((row) => ({
-        category: row.category_name,
-        amount: Number(row.amount),
-      })),
-    [spending],
-  )
 
   const deleteMutation = useMutation({
     mutationFn: api.transactions.remove,
@@ -151,8 +99,48 @@ export default function Transactions() {
         }
       />
 
+      {/* Context strip — one line, no chart */}
+      <Card>
+        <CardContent className="py-4">
+          {summaryLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {MONTHS[month - 1]} {year} ·{" "}
+              <span className="text-emerald-600">
+                in <Money value={summary?.income ?? "0"} className="font-semibold" />
+              </span>{" "}
+              ·{" "}
+              <span className="text-rose-600">
+                out{" "}
+                <Money
+                  value={(-(Number(summary?.expense ?? 0))).toFixed(2)}
+                  className="font-semibold"
+                />
+              </span>{" "}
+              ·{" "}
+              <span className="text-sky-600">
+                net{" "}
+                <Money
+                  value={(Number(summary?.income ?? 0) - Number(summary?.expense ?? 0)).toFixed(2)}
+                  className="font-semibold"
+                />
+              </span>
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Filter bar */}
       <div className="flex flex-wrap items-end gap-3">
-        <MonthPicker year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
+        <MonthPicker
+          year={year}
+          month={month}
+          onChange={(y, m) => {
+            setYear(y)
+            setMonth(m)
+          }}
+        />
         <div className="relative min-w-[200px] flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -199,105 +187,19 @@ export default function Transactions() {
         </Select>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">Income</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {summaryLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : (
-              <Money
-                value={summary?.income ?? "0"}
-                className="text-2xl font-semibold text-emerald-600"
-              />
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">Expense</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {summaryLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : (
-              <Money
-                value={summary?.expense ?? "0"}
-                className="text-2xl font-semibold text-rose-600"
-              />
-            )}
-            {comparisonText && (
-              <p className="mt-1 text-xs text-muted-foreground">{comparisonText}</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">Net</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {summaryLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : netAmount && Number(netAmount) >= 0 ? (
-              <Money value={netAmount} className="text-2xl font-semibold text-sky-600" />
-            ) : (
-              <Money value={netAmount ?? "0"} className="text-2xl font-semibold text-rose-600" />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
+      {/* Table */}
       <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Spending by category · {MONTHS[month - 1]} {year}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {spendingError ? (
-              <p className="text-sm text-destructive">Failed to load spending.</p>
-            ) : chartData.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No spending this month.</p>
-            ) : (
-              <ChartContainer config={{}} className="h-[280px] w-full">
-                <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="category"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tick={{ className: "font-numeric text-xs" }}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ className: "font-numeric text-xs" }}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar
-                    dataKey="amount"
-                    fill="var(--color-rose-600, #e11d48)"
-                    radius={[4, 4, 0, 0]}
-                    isAnimationActive={false}
-                  />
-                </BarChart>
-              </ChartContainer>
-            )}
-          </CardContent>
-        </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Transactions · {year}</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : isError || categoriesError ? (
-            <p className="text-sm text-destructive">Failed to load transactions.</p>
+            <p className="p-6 text-sm text-muted-foreground">Loading…</p>
+          ) : isError ? (
+            <p className="p-6 text-sm text-destructive">
+              Failed to load transactions.
+            </p>
           ) : !transactions || transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No transactions match the filters.</p>
+            <p className="p-6 text-sm text-muted-foreground">
+              No transactions match the filters.
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -312,9 +214,13 @@ export default function Transactions() {
               <TableBody>
                 {transactions.map((t) => (
                   <TableRow key={t.id}>
-                    <TableCell className="font-numeric text-sm">{t.occurred_on}</TableCell>
+                    <TableCell className="font-numeric text-sm">
+                      {t.occurred_on}
+                    </TableCell>
                     <TableCell>
-                      <span className="block max-w-[280px] truncate">{t.description}</span>
+                      <span className="block max-w-[280px] truncate">
+                        {t.description}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <span className="flex items-center gap-2">
@@ -324,9 +230,15 @@ export default function Transactions() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Money
-                        value={t.amount}
+                        value={
+                          t.transaction_type === "income"
+                            ? t.amount
+                            : (-Number(t.amount)).toFixed(2)
+                        }
                         className={
-                          t.transaction_type === "income" ? "text-emerald-600" : "text-rose-600"
+                          t.transaction_type === "income"
+                            ? "text-emerald-600"
+                            : "text-rose-600"
                         }
                       />
                     </TableCell>

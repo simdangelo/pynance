@@ -150,6 +150,10 @@ def _shift_month(year: int, month: int) -> tuple[int, int]:
 
 
 def get_net_worth_trend(db: Session, start_date: date, end_date: date) -> list[NetWorthTrendPoint]:
+    earliest = db.execute(select(func.min(Transaction.occurred_on))).scalar_one()
+    if earliest is not None:
+        start_date = max(start_date, earliest)
+
     opening_total = db.execute(
         select(func.coalesce(func.sum(Asset.opening_balance), 0))
     ).scalar_one()

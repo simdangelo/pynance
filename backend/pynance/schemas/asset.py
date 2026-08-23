@@ -28,3 +28,9 @@ class AssetResponse(AssetBase):
     balance: Decimal
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class NetWorthTrendPointResponse(BaseModel):
+    year: int
+    month: int
+    amount: Decimal

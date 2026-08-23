@@ -218,3 +218,91 @@ def test_asset_without_transactions_still_shows_opening_balance(client: TestClie
     assets = client.get("/api/assets").json()
 
     assert assets[0]["balance"] == "100.00"
+
+
+def test_net_worth_trend_cumulates_over_months(client: TestClient) -> None:
+    category = create_category(client, "groceries", "expense")
+    salary = create_category(client, "salary", "income")
+    create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
+    create_asset(client, name="Savings", asset_type="savings", opening_balance="50.00")
+    create_transaction(
+        client,
+        amount="30.00",
+        category_id=category["id"],
+        description="food",
+        occurred_on="2026-06-10",
+    )
+    create_transaction(
+        client,
+        amount="200.00",
+        category_id=salary["id"],
+        description="salary",
+        occurred_on="2026-07-01",
+    )
+    create_transaction(
+        client,
+        amount="10.00",
+        category_id=category["id"],
+        description="food",
+        occurred_on="2026-07-20",
+    )
+
+    response = client.get("/api/assets/net-worth-trend?start_date=2026-06-01&end_date=2026-08-31")
+
+    assert response.status_code == 200
+    data = response.json()
+    # June: 150 opening + (0 - 30) = 120
+    # July: 120 + (200 - 10) = 310
+    # Aug: 310 + 0 = 310
+    assert data == [
+        {"year": 2026, "month": 6, "amount": "120.00"},
+        {"year": 2026, "month": 7, "amount": "310.00"},
+        {"year": 2026, "month": 8, "amount": "310.00"},
+    ]
+
+
+def test_net_worth_trend_includes_transactions_before_range(client: TestClient) -> None:
+    category = create_category(client, "groceries", "expense")
+    create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
+    create_transaction(
+        client,
+        amount="30.00",
+        category_id=category["id"],
+        description="food before range",
+        occurred_on="2026-05-10",
+    )
+
+    response = client.get("/api/assets/net-worth-trend?start_date=2026-06-01&end_date=2026-06-30")
+
+    assert response.status_code == 200
+    data = response.json()
+    # June: 100 opening - 30 (before range) = 70
+    assert data == [{"year": 2026, "month": 6, "amount": "70.00"}]
+
+
+def test_net_worth_trend_ignores_transfers(client: TestClient) -> None:
+    category = create_category(client, "groceries", "expense")
+    checking = create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
+    savings = create_asset(client, name="Savings", asset_type="savings", opening_balance="0")
+    create_transfer(
+        client,
+        source_asset_id=checking["id"],
+        destination_asset_id=savings["id"],
+        amount="40.00",
+        description="savings",
+        occurred_on="2026-06-10",
+    )
+    create_transaction(
+        client,
+        amount="10.00",
+        category_id=category["id"],
+        description="food",
+        occurred_on="2026-06-15",
+    )
+
+    response = client.get("/api/assets/net-worth-trend?start_date=2026-06-01&end_date=2026-06-30")
+
+    assert response.status_code == 200
+    data = response.json()
+    # June: 100 opening - 10 expense; the 40 transfer cancels out
+    assert data == [{"year": 2026, "month": 6, "amount": "90.00"}]

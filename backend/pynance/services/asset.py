@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import case, func, select
@@ -130,3 +132,87 @@ def get_asset_balances(db: Session) -> dict[int, Decimal]:
         balances[int(asset_id)] = balances.get(int(asset_id), Decimal("0")) - Decimal(amount or 0)
 
     return balances
+
+
+@dataclass(frozen=True)
+class NetWorthTrendPoint:
+    year: int
+    month: int
+    amount: Decimal
+
+
+def _month_start(year: int, month: int) -> date:
+    return date(year, month, 1)
+
+
+def _shift_month(year: int, month: int) -> tuple[int, int]:
+    return (year + 1, 1) if month == 12 else (year, month + 1)
+
+
+def get_net_worth_trend(db: Session, start_date: date, end_date: date) -> list[NetWorthTrendPoint]:
+    opening_total = db.execute(
+        select(func.coalesce(func.sum(Asset.opening_balance), 0))
+    ).scalar_one()
+
+    prior_total = db.execute(
+        select(
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Category.transaction_type == TransactionType.EXPENSE, -Transaction.amount),
+                        (Category.transaction_type == TransactionType.INCOME, Transaction.amount),
+                        else_=0,
+                    )
+                ),
+                0,
+            )
+        )
+        .select_from(Transaction)
+        .join(Category, Transaction.category_id == Category.id)
+        .where(Transaction.occurred_on < start_date)
+    ).scalar_one()
+
+    transaction_nets = db.execute(
+        select(
+            func.extract("year", Transaction.occurred_on),
+            func.extract("month", Transaction.occurred_on),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Category.transaction_type == TransactionType.EXPENSE, -Transaction.amount),
+                        (Category.transaction_type == TransactionType.INCOME, Transaction.amount),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
+        )
+        .select_from(Transaction)
+        .join(Category, Transaction.category_id == Category.id)
+        .where(
+            Transaction.occurred_on >= start_date,
+            Transaction.occurred_on <= end_date,
+        )
+        .group_by(
+            func.extract("year", Transaction.occurred_on),
+            func.extract("month", Transaction.occurred_on),
+        )
+        .order_by(
+            func.extract("year", Transaction.occurred_on),
+            func.extract("month", Transaction.occurred_on),
+        )
+    ).all()
+
+    transaction_nets_by_month: dict[tuple[int, int], Decimal] = {}
+    for year, month, net in transaction_nets:
+        transaction_nets_by_month[(int(year), int(month))] = Decimal(net or 0)
+
+    running = Decimal(opening_total or 0) + Decimal(prior_total or 0)
+    points: list[NetWorthTrendPoint] = []
+    year, month = start_date.year, start_date.month
+    while (year, month) <= (end_date.year, end_date.month):
+        running += transaction_nets_by_month.get((year, month), Decimal("0"))
+        points.append(NetWorthTrendPoint(year, month, running))
+        year, month = _shift_month(year, month)
+
+    return points

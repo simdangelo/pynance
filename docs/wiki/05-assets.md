@@ -319,6 +319,35 @@ frontend resolves names like it does for categories.
 - **Deleting an asset with references** — check for transactions/transfers
   first; refuse loudly rather than orphan rows.
 
+## Net worth: the cumulative view
+
+Net worth = sum of all asset balances. But a **trend** of net worth is a
+*different kind of report* than the income/expense trend: it is
+**cumulative**, not per-period. The value at the end of a month is the
+running total of everything up to that point:
+
+```
+net_worth(end of month M) = Σ opening_balances
+                            + Σ (income − expense) for all transactions up to M
+```
+
+Two design consequences:
+
+- **Transfers cancel out.** A transfer moves money between assets (+X on one
+  side, −X on the other), so it contributes exactly zero to total net worth.
+  The net-worth report ignores transfers entirely — only transactions and the
+  opening-balance seed matter.
+- **Every month in the range is emitted, even with no activity.** A month
+  with zero transactions still has a balance; the chart must not have gaps.
+  The report walks month by month from `start_date` to `end_date`, carrying
+  the running total forward.
+
+Implementation notes: the seed (Σ opening balances) is the starting value;
+monthly net flows are aggregated from transactions (income − expense, sign by
+category per ADR 0003); the running total accumulates over the queried months.
+The period is `start_date`/`end_date` query params, and each point carries
+`year`/`month`/`amount` per the naming convention.
+
 ---
 
 ## What to do on your own (the exercise)

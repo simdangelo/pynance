@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from typing import Annotated
 
@@ -5,7 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from pynance.database import get_db
-from pynance.schemas.asset import AssetCreate, AssetResponse, AssetUpdate
+from pynance.schemas.asset import (
+    AssetCreate,
+    AssetResponse,
+    AssetUpdate,
+    NetWorthTrendPointResponse,
+)
 from pynance.services import asset as asset_service
 from pynance.services.exceptions import (
     AssetInUseError,
@@ -50,6 +56,15 @@ def list_assets(db: Annotated[Session, Depends(get_db)]) -> list[AssetResponse]:
         )
         for a in assets
     ]
+
+
+@router.get("/net-worth-trend", response_model=list[NetWorthTrendPointResponse])
+def get_net_worth_trend(
+    start_date: date,
+    end_date: date,
+    db: Annotated[Session, Depends(get_db)],
+) -> list[asset_service.NetWorthTrendPoint]:
+    return asset_service.get_net_worth_trend(db, start_date, end_date)
 
 
 @router.get("/{asset_id}", response_model=AssetResponse)

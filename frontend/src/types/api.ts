@@ -55,6 +55,12 @@ export interface TransferInput {
   occurred_on: string
 }
 
+export interface NetWorthTrendPoint {
+  year: number
+  month: number
+  amount: string
+}
+
 export interface Summary {
   income: string
   expense: string

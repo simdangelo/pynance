@@ -106,7 +106,7 @@ export default function Transactions() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             <SelectItem value="income">Income</SelectItem>
             <SelectItem value="expense">Expense</SelectItem>
           </SelectContent>

@@ -43,7 +43,7 @@ def delete_category(category_id: int, db: Annotated[Session, Depends(get_db)]) -
     except CategoryHasTransactionsError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Category is associated to existing trnasactions",
+            detail="Category is associated to existing transactions",
         ) from e
 
 

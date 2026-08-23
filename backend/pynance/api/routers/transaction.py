@@ -19,6 +19,7 @@ from pynance.schemas.transaction import (
 )
 from pynance.services import transaction as transaction_service
 from pynance.services.exceptions import (
+    AssetNotFoundError,
     CategoryNotFoundError,
     MonthWithoutYearError,
     TransactionNotFoundError,
@@ -36,6 +37,10 @@ def create_transaction(
     except CategoryNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Category doesn't exist"
+        ) from e
+    except AssetNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Asset doesn't exist"
         ) from e
     return result
 
@@ -112,6 +117,10 @@ def update_transaction(
     except CategoryNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Category doesn't exist"
+        ) from e
+    except AssetNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Asset doesn't exist"
         ) from e
     return result
 

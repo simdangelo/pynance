@@ -131,7 +131,9 @@ def test_delete_recurring_template_not_found_returns_404(client: TestClient) -> 
     assert response.status_code == 404
 
 
-def test_generate_next_creates_transaction_and_advances(client: TestClient) -> None:
+def test_generate_next_creates_transaction_and_advances(
+    client: TestClient, liquid_asset: int
+) -> None:
     category = create_category(client, "groceries", "expense")
     template = create_recurring_template(
         client,
@@ -157,7 +159,7 @@ def test_generate_next_creates_transaction_and_advances(client: TestClient) -> N
     assert templates[0]["next_occurrence"] == "2026-07-01"
 
 
-def test_generate_next_weekly_advances_by_week(client: TestClient) -> None:
+def test_generate_next_weekly_advances_by_week(client: TestClient, liquid_asset: int) -> None:
     category = create_category(client, "groceries", "expense")
     template = create_recurring_template(
         client,
@@ -175,7 +177,9 @@ def test_generate_next_weekly_advances_by_week(client: TestClient) -> None:
     assert templates[0]["next_occurrence"] == "2026-06-08"
 
 
-def test_generate_next_custom_interval_advances_by_interval_weeks(client: TestClient) -> None:
+def test_generate_next_custom_interval_advances_by_interval_weeks(
+    client: TestClient, liquid_asset: int
+) -> None:
     category = create_category(client, "groceries", "expense")
     template = create_recurring_template(
         client,
@@ -235,7 +239,7 @@ def test_generate_next_not_found_returns_404(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-def test_generate_next_twice_produces_distinct_dates(client: TestClient) -> None:
+def test_generate_next_twice_produces_distinct_dates(client: TestClient, liquid_asset: int) -> None:
     category = create_category(client, "groceries", "expense")
     template = create_recurring_template(
         client,
@@ -291,7 +295,7 @@ def test_due_flag(client: TestClient) -> None:
     assert by_description["Future"]["due"] is False
 
 
-def test_monthly_generation_clamps_end_of_month(client: TestClient) -> None:
+def test_monthly_generation_clamps_end_of_month(client: TestClient, liquid_asset: int) -> None:
     category = create_category(client, "groceries", "expense")
     template = create_recurring_template(
         client,

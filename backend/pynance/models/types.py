@@ -11,3 +11,9 @@ class Frequency(StrEnum):
     MONTHLY = auto()
     WEEKLY = auto()
     CUSTOM = auto()
+
+
+class AssetType(StrEnum):
+    LIQUID = auto()
+    SAVINGS = auto()
+    ETF = auto()

@@ -6,14 +6,16 @@ os.environ["POSTGRES_DB"] = "pynance_test_db"
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, delete
+from sqlalchemy import create_engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from pynance.api.main import app
 from pynance.database import Base, get_db
+from pynance.models.asset import Asset
 from pynance.models.category import Category
 from pynance.models.recurring_template import RecurringTemplate
 from pynance.models.transaction import Transaction
+from pynance.models.transfer import Transfer
 
 engine = create_engine(
     "postgresql+psycopg://app_user:app_user_password@localhost:5432/pynance_test_db"
@@ -31,9 +33,11 @@ def setup_database() -> Generator[None]:
 @pytest.fixture
 def db_session(setup_database: Generator[None]) -> Generator[Session]:
     session = TestingSessionLocal()
+    session.execute(delete(Transfer))
     session.execute(delete(Transaction))
     session.execute(delete(RecurringTemplate))
     session.execute(delete(Category))
+    session.execute(delete(Asset))
     session.commit()
     yield session
     session.close()
@@ -49,10 +53,62 @@ def client(db_session: Session) -> Generator[TestClient]:
     app.dependency_overrides.clear()
 
 
+@pytest.fixture
+def liquid_asset(db_session: Session) -> int:
+    session = TestingSessionLocal()
+    liquid = session.execute(select(Asset).where(Asset.name == "Liquid")).scalar_one_or_none()
+    if liquid is None:
+        liquid = Asset(name="Liquid", asset_type="liquid")
+        session.add(liquid)
+        session.commit()
+        session.refresh(liquid)
+    asset_id = liquid.id
+    session.close()
+    return asset_id
+
+
 def create_category(client: TestClient, name: str, transaction_type: str) -> dict[str, Any]:
     response = client.post(
         "/api/categories",
         json={"name": name, "transaction_type": transaction_type},
+    )
+    assert response.status_code == 201, response.text
+    return cast("dict[str, Any]", response.json())
+
+
+def create_asset(
+    client: TestClient,
+    *,
+    name: str,
+    asset_type: str,
+    opening_balance: str = "0",
+) -> dict[str, Any]:
+    response = client.post(
+        "/api/assets",
+        json={"name": name, "asset_type": asset_type, "opening_balance": opening_balance},
+    )
+    assert response.status_code == 201, response.text
+    return cast("dict[str, Any]", response.json())
+
+
+def create_transfer(
+    client: TestClient,
+    *,
+    source_asset_id: int,
+    destination_asset_id: int,
+    amount: str,
+    description: str,
+    occurred_on: str,
+) -> dict[str, Any]:
+    response = client.post(
+        "/api/transfers",
+        json={
+            "source_asset_id": source_asset_id,
+            "destination_asset_id": destination_asset_id,
+            "amount": amount,
+            "description": description,
+            "occurred_on": occurred_on,
+        },
     )
     assert response.status_code == 201, response.text
     return cast("dict[str, Any]", response.json())
@@ -65,7 +121,19 @@ def create_transaction(
     category_id: int,
     description: str,
     occurred_on: str,
+    asset_id: int | None = None,
 ) -> dict[str, Any]:
+    if asset_id is None:
+        session = TestingSessionLocal()
+        liquid = session.execute(select(Asset).where(Asset.name == "Liquid")).scalar_one_or_none()
+        if liquid is None:
+            liquid = Asset(name="Liquid", asset_type="liquid")
+            session.add(liquid)
+            session.commit()
+            session.refresh(liquid)
+        asset_id = liquid.id
+        session.close()
+
     response = client.post(
         "/api/transactions",
         json={
@@ -73,6 +141,7 @@ def create_transaction(
             "category_id": category_id,
             "description": description,
             "occurred_on": occurred_on,
+            "asset_id": asset_id,
         },
     )
     assert response.status_code == 201, response.text

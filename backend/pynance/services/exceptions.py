@@ -28,3 +28,23 @@ class PausedTemplateError(Exception):
 
 class NextOccurrenceNotDueError(Exception):
     pass
+
+
+class DuplicateAssetNameError(Exception):
+    pass
+
+
+class AssetNotFoundError(Exception):
+    pass
+
+
+class AssetInUseError(Exception):
+    pass
+
+
+class TransferNotFoundError(Exception):
+    pass
+
+
+class SelfTransferError(Exception):
+    pass

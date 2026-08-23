@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from tests.conftest import create_transaction
+
 
 def test_create_category(client: TestClient) -> None:
     response = client.post(
@@ -73,15 +75,12 @@ def test_delete_category_with_transactions_returns_409(client: TestClient) -> No
         "/api/categories",
         json={"name": "groceries", "transaction_type": "expense"},
     ).json()
-    client.post(
-        "/api/transactions",
-        json={
-            "transaction_type": "expense",
-            "amount": "10.00",
-            "category_id": category["id"],
-            "description": "pizza",
-            "occurred_on": "2026-08-05",
-        },
+    create_transaction(
+        client,
+        amount="10.00",
+        category_id=category["id"],
+        description="pizza",
+        occurred_on="2026-08-05",
     )
 
     response = client.delete(f"/api/categories/{category['id']}")

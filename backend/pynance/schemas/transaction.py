@@ -10,6 +10,7 @@ class TransactionBase(BaseModel):
     transaction_type: TransactionType
     amount: Decimal
     category_id: int
+    asset_id: int
     description: str
     occurred_on: date
 
@@ -17,6 +18,7 @@ class TransactionBase(BaseModel):
 class TransactionCreate(BaseModel):
     amount: Decimal
     category_id: int
+    asset_id: int
     description: str
     occurred_on: date
 
@@ -24,6 +26,7 @@ class TransactionCreate(BaseModel):
 class TransactionUpdate(BaseModel):
     amount: Decimal | None = None
     category_id: int | None = None
+    asset_id: int | None = None
     description: str | None = None
     occurred_on: date | None = None
 

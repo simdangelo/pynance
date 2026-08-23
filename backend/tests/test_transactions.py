@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from tests.conftest import create_category, create_transaction
 
 
-def test_create_transaction(client: TestClient) -> None:
+def test_create_transaction(client: TestClient, liquid_asset: int) -> None:
     category = create_category(client, "groceries", "expense")
 
     response = client.post(
@@ -13,6 +13,7 @@ def test_create_transaction(client: TestClient) -> None:
             "category_id": category["id"],
             "description": "weekly groceries",
             "occurred_on": "2026-08-05",
+            "asset_id": liquid_asset,
         },
     )
 
@@ -25,7 +26,9 @@ def test_create_transaction(client: TestClient) -> None:
     assert data["id"] > 0
 
 
-def test_create_transaction_with_unknown_category_returns_404(client: TestClient) -> None:
+def test_create_transaction_with_unknown_category_returns_404(
+    client: TestClient, liquid_asset: int
+) -> None:
     response = client.post(
         "/api/transactions",
         json={
@@ -33,6 +36,7 @@ def test_create_transaction_with_unknown_category_returns_404(client: TestClient
             "category_id": 9999,
             "description": "phantom",
             "occurred_on": "2026-08-05",
+            "asset_id": liquid_asset,
         },
     )
 

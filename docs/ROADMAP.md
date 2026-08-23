@@ -9,7 +9,7 @@ Status legend: `planned` → `in progress` → `done`.
 
 ---
 
-## 1. Recurring transactions — `in progress`
+## 1. Recurring transactions — `done`
 
 **Goal:** record payments/income that repeat (rent, salary, subscriptions)
 without re-entering them.
@@ -36,23 +36,25 @@ exist (slot left for it).
 
 ---
 
-## 2. Assets — `planned`
+## 2. Assets — `in progress`
 
 **Goal:** model *where money is* (the foundation for net worth and
 allocation).
 
 **Design decisions (made):**
-- **One `Asset` table** with a `type` enum (`liquid`, `savings`, `etf`,
-  `bond`, ...) and a name. Flexibility comes from data, not schema: adding
-  bitcoin later = adding an enum value; splitting Liquid into two bank
-  accounts = adding a row.
+- **One `Asset` table** with a `type` enum (`liquid`, `savings`, `etf`; more
+  values can be added later) and a name. Flexibility comes from data, not
+  schema: adding bitcoin later = adding an enum value; splitting Liquid into
+  two bank accounts = adding a row.
 - **Cash/bank/debit/prepaid/PayPal collapse into a single `Liquid` asset.**
   No per-bank split for now (add rows later if needed).
 - **Balances are derived from transactions**, not stored: income/expense per
   asset, plus **transfers** between assets (the transfer concept returns —
   it was deferred in Module 2).
-- Transaction gains an `asset_id`; transfers are two-sided
-  (source/destination).
+- Transaction gains a **required** `asset_id` (default Liquid, existing rows
+  backfilled); **transfers are a separate two-FK entity** (source/destination),
+  editable/deletable, self-transfer forbidden.
+- Recurring-template asset integration is **deferred** to a later decision.
 
 **Dependencies:** the asset decision is an ADR + wiki (it reverses the
 "no accounts" call from Module 2).

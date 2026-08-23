@@ -5,6 +5,7 @@ from decimal import Decimal
 from sqlalchemy import ColumnElement, and_, func, select
 from sqlalchemy.orm import Session, selectinload
 
+from pynance.models.asset import Asset
 from pynance.models.category import Category
 from pynance.models.transaction import Transaction
 from pynance.models.types import TransactionType
@@ -13,6 +14,7 @@ from pynance.schemas.transaction import (
     TransactionUpdate,
 )
 from pynance.services.exceptions import (
+    AssetNotFoundError,
     CategoryNotFoundError,
     MonthWithoutYearError,
     TransactionNotFoundError,
@@ -26,9 +28,14 @@ def create_transaction(db: Session, transaction: TransactionCreate) -> Transacti
     if category is None:
         raise CategoryNotFoundError(f"Category with id '{transaction.category_id}' doesn't exist")
 
+    asset = db.execute(select(Asset).where(Asset.id == transaction.asset_id)).scalar_one_or_none()
+    if asset is None:
+        raise AssetNotFoundError(f"Asset with id '{transaction.asset_id}' doesn't exist")
+
     new_transaction = Transaction(
         amount=transaction.amount,
         category_id=transaction.category_id,
+        asset_id=transaction.asset_id,
         description=transaction.description,
         occurred_on=transaction.occurred_on,
     )
@@ -59,6 +66,11 @@ def update_transaction(db: Session, transaction_id: int, update: TransactionUpda
     ).scalar_one_or_none()
     if category is None:
         raise CategoryNotFoundError(f"Category with id '{new_category_id}' doesn't exist")
+
+    new_asset_id = update.asset_id if update.asset_id is not None else transaction.asset_id
+    asset = db.execute(select(Asset).where(Asset.id == new_asset_id)).scalar_one_or_none()
+    if asset is None:
+        raise AssetNotFoundError(f"Asset with id '{new_asset_id}' doesn't exist")
 
     for field_to_update, value in update.model_dump(exclude_unset=True).items():
         setattr(transaction, field_to_update, value)

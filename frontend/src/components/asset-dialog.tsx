@@ -53,7 +53,7 @@ export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
         ? api.assets.update(asset.id, data)
         : api.assets.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assets"] })
+      queryClient.invalidateQueries()
       onOpenChange(false)
     },
     onError: (error: Error) => {

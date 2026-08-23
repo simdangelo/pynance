@@ -80,8 +80,7 @@ export default function Recurring() {
   const generateMutation = useMutation({
     mutationFn: api.recurringTemplates.generate,
     onSuccess: (transaction) => {
-      queryClient.invalidateQueries({ queryKey: ["recurring"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      queryClient.invalidateQueries()
       toast.success(`Generated "${transaction.description}" for ${transaction.occurred_on}`)
     },
     onError: (error: Error) => {

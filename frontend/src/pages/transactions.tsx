@@ -129,7 +129,7 @@ export default function Transactions() {
   const deleteMutation = useMutation({
     mutationFn: api.transactions.remove,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      queryClient.invalidateQueries()
     },
     onError: () => toast.error("Failed to delete transaction"),
   })

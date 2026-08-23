@@ -40,7 +40,12 @@ const ASSET_TYPE_COLOR: Record<AssetType, string> = {
 function rangeToDates(range: TrendRange): { start: string; end: string } {
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const fmt = (d: Date) => d.toISOString().slice(0, 10)
+  const fmt = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    return `${y}-${m}-${day}`
+  }
 
   const start = new Date(today)
   switch (range) {

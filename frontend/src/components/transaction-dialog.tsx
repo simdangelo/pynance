@@ -76,7 +76,7 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
         ? api.transactions.update(transaction.id, data)
         : api.transactions.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      queryClient.invalidateQueries()
       onOpenChange(false)
     },
     onError: () => toast.error("Failed to save transaction"),

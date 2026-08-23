@@ -58,8 +58,7 @@ function TransfersSection({ assets }: { assets?: Asset[] }) {
   const deleteMutation = useMutation({
     mutationFn: api.transfers.remove,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transfers"] })
-      queryClient.invalidateQueries({ queryKey: ["assets"] })
+      queryClient.invalidateQueries()
     },
     onError: () => toast.error("Failed to delete transfer"),
   })
@@ -181,7 +180,7 @@ export default function Assets() {
   const deleteMutation = useMutation({
     mutationFn: api.assets.remove,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assets"] })
+      queryClient.invalidateQueries()
     },
     onError: (error: Error) => {
       const message =

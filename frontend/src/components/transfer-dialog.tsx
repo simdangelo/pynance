@@ -70,8 +70,7 @@ export function TransferDialog({ open, onOpenChange, transfer }: TransferDialogP
         ? api.transfers.update(transfer.id, data)
         : api.transfers.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transfers"] })
-      queryClient.invalidateQueries({ queryKey: ["assets"] })
+      queryClient.invalidateQueries()
       onOpenChange(false)
     },
     onError: (error: Error) => {
@@ -100,15 +99,24 @@ export function TransferDialog({ open, onOpenChange, transfer }: TransferDialogP
         </SelectItem>
       ))
 
+  const canTransfer = (assets?.length ?? 0) >= 2
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit transfer" : "Add transfer"}</DialogTitle>
           <DialogDescription>
-            Move money from one asset to another. This is not income or expense.
+            Move money from one asset to another.
           </DialogDescription>
         </DialogHeader>
+        {!assets ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : !canTransfer ? (
+          <p className="text-sm text-muted-foreground">
+            Transfers need at least two assets. Add another asset first.
+          </p>
+        ) : (
         <form onSubmit={submit} className="space-y-4">
           <div>
             <Label>From</Label>
@@ -195,6 +203,7 @@ export function TransferDialog({ open, onOpenChange, transfer }: TransferDialogP
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   )

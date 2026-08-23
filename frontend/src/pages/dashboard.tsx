@@ -41,6 +41,19 @@ export default function Dashboard() {
     queryFn: () => api.transactions.list(),
   })
 
+  const { data: assets, isLoading: assetsLoading } = useQuery({
+    queryKey: ["assets"],
+    queryFn: api.assets.list,
+  })
+
+  const totalBalance = useMemo(
+    () =>
+      (assets ?? [])
+        .reduce((sum, asset) => sum + Number(asset.balance), 0)
+        .toFixed(2),
+    [assets],
+  )
+
   const recent = useMemo(() => {
     const prefix = `${year}-${String(month).padStart(2, "0")}`
     return (transactions ?? [])
@@ -68,7 +81,7 @@ export default function Dashboard() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">Income</CardTitle>
@@ -96,6 +109,18 @@ export default function Dashboard() {
                 value={summary?.expense ?? "0"}
                 className="text-2xl font-semibold text-rose-600"
               />
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total balance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {assetsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <Money value={totalBalance} className="text-2xl font-semibold text-sky-600" />
             )}
           </CardContent>
         </Card>

@@ -4,8 +4,7 @@ import { toast } from "sonner"
 
 import { api } from "@/lib/api"
 import { todayLocalISO } from "@/lib/utils"
-import type { Transaction } from "@/types/api"
-import { TypeBadge } from "@/components/type-badge"
+import type { Transfer } from "@/types/api"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -25,26 +24,21 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-interface TransactionDialogProps {
+interface TransferDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  transaction?: Transaction | null
+  transfer?: Transfer | null
 }
 
-export function TransactionDialog({ open, onOpenChange, transaction }: TransactionDialogProps) {
+export function TransferDialog({ open, onOpenChange, transfer }: TransferDialogProps) {
   const queryClient = useQueryClient()
-  const isEditing = Boolean(transaction)
+  const isEditing = Boolean(transfer)
 
+  const [sourceAssetId, setSourceAssetId] = useState("")
+  const [destinationAssetId, setDestinationAssetId] = useState("")
   const [amount, setAmount] = useState("")
-  const [categoryId, setCategoryId] = useState("")
-  const [assetId, setAssetId] = useState("")
   const [description, setDescription] = useState("")
   const [occurredOn, setOccurredOn] = useState("")
-
-  const { data: categories } = useQuery({
-    queryKey: ["categories"],
-    queryFn: api.categories.list,
-  })
 
   const { data: assets } = useQuery({
     queryKey: ["assets"],
@@ -53,109 +47,108 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
 
   useEffect(() => {
     if (open) {
-      setAmount(transaction?.amount ?? "")
-      setCategoryId(transaction ? String(transaction.category_id) : "")
-      setAssetId(transaction ? String(transaction.asset_id) : "")
-      setDescription(transaction?.description ?? "")
-      setOccurredOn(transaction?.occurred_on ?? todayLocalISO())
+      setSourceAssetId(transfer ? String(transfer.source_asset_id) : "")
+      setDestinationAssetId(transfer ? String(transfer.destination_asset_id) : "")
+      setAmount(transfer?.amount ?? "")
+      setDescription(transfer?.description ?? "")
+      setOccurredOn(transfer?.occurred_on ?? todayLocalISO())
     }
-  }, [open, transaction])
+  }, [open, transfer])
 
-  const selectedCategory = useMemo(
-    () => categories?.find((c) => String(c.id) === categoryId),
-    [categories, categoryId],
+  const sourceAsset = useMemo(
+    () => assets?.find((a) => String(a.id) === sourceAssetId),
+    [assets, sourceAssetId],
+  )
+  const destinationAsset = useMemo(
+    () => assets?.find((a) => String(a.id) === destinationAssetId),
+    [assets, destinationAssetId],
   )
 
-  const selectedAsset = useMemo(
-    () => assets?.find((a) => String(a.id) === assetId),
-    [assets, assetId],
-  )
-
-  const mutation = useMutation({    mutationFn: (data: unknown) =>
-      isEditing && transaction
-        ? api.transactions.update(transaction.id, data)
-        : api.transactions.create(data),
+  const mutation = useMutation({
+    mutationFn: (data: Parameters<typeof api.transfers.create>[0]) =>
+      isEditing && transfer
+        ? api.transfers.update(transfer.id, data)
+        : api.transfers.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      queryClient.invalidateQueries({ queryKey: ["transfers"] })
+      queryClient.invalidateQueries({ queryKey: ["assets"] })
       onOpenChange(false)
     },
-    onError: () => toast.error("Failed to save transaction"),
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to save transfer")
+    },
   })
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!sourceAsset || !destinationAsset) return
     mutation.mutate({
+      source_asset_id: Number(sourceAssetId),
+      destination_asset_id: Number(destinationAssetId),
       amount,
-      category_id: Number(categoryId),
-      asset_id: Number(assetId),
       description,
       occurred_on: occurredOn,
     })
   }
 
+  const assetItems = (excludeId?: string) =>
+    assets
+      ?.filter((a) => String(a.id) !== excludeId)
+      .map((a) => (
+        <SelectItem key={a.id} value={String(a.id)}>
+          {a.name}
+        </SelectItem>
+      ))
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit transaction" : "Add transaction"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit transfer" : "Add transfer"}</DialogTitle>
           <DialogDescription>
-            {isEditing
-              ? "Update the details of this transaction."
-              : "Record a new income or expense."}
+            Move money from one asset to another. This is not income or expense.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <Label>Category</Label>
+            <Label>From</Label>
             <Select
-              value={categoryId}
+              value={sourceAssetId}
               onValueChange={(v) => {
-                if (v) setCategoryId(v)
+                if (v) {
+                  setSourceAssetId(v)
+                  if (v === destinationAssetId) setDestinationAssetId("")
+                }
+              }}
+              required
+            >
+              <SelectTrigger className="mt-1.5">
+                <SelectValue>{sourceAsset?.name ?? "Select source asset"}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="min-w-[240px]">
+                {assetItems(destinationAssetId)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>To</Label>
+            <Select
+              value={destinationAssetId}
+              onValueChange={(v) => {
+                if (v) {
+                  setDestinationAssetId(v)
+                  if (v === sourceAssetId) setSourceAssetId("")
+                }
               }}
               required
             >
               <SelectTrigger className="mt-1.5">
                 <SelectValue>
-                  {selectedCategory ? (
-                    <span className="flex items-center gap-2">
-                      {selectedCategory.name}
-                      <TypeBadge type={selectedCategory.transaction_type} />
-                    </span>
-                  ) : (
-                    "Select a category"
-                  )}
+                  {destinationAsset?.name ?? "Select destination asset"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="min-w-[240px]">
-                {categories?.map((category) => (
-                  <SelectItem key={category.id} value={String(category.id)}>
-                    <span className="flex items-center gap-2">
-                      {category.name}
-                      <TypeBadge type={category.transaction_type} />
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Asset</Label>
-            <Select
-              value={assetId}
-              onValueChange={(v) => {
-                if (v) setAssetId(v)
-              }}
-              required
-            >
-              <SelectTrigger className="mt-1.5">
-                <SelectValue>{selectedAsset?.name ?? "Select an asset"}</SelectValue>
-              </SelectTrigger>
-              <SelectContent className="min-w-[240px]">
-                {assets?.map((asset) => (
-                  <SelectItem key={asset.id} value={String(asset.id)}>
-                    {asset.name}
-                  </SelectItem>
-                ))}
+                {assetItems(sourceAssetId)}
               </SelectContent>
             </Select>
           </div>
@@ -178,7 +171,7 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
               required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Weekly groceries"
+              placeholder="e.g. monthly savings"
               className="mt-1.5"
             />
           </div>

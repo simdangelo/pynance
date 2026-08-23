@@ -96,7 +96,9 @@ export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
             <Label>Type</Label>
             <Select value={assetType} onValueChange={(v) => v && setAssetType(v as AssetType)}>
               <SelectTrigger className="mt-1.5">
-                <SelectValue />
+                <SelectValue>
+                  {assetType.charAt(0).toUpperCase() + assetType.slice(1)}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {ASSET_TYPES.map((t) => (

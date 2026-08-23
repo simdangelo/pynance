@@ -128,7 +128,9 @@ export default function Categories() {
               <Label>Type</Label>
               <Select value={type} onValueChange={(v) => setType(v as TransactionType)}>
                 <SelectTrigger className="mt-1.5">
-                  <SelectValue />
+                  <SelectValue>
+                    {type === "income" ? "Income" : "Expense"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="expense">Expense</SelectItem>
@@ -222,7 +224,9 @@ export default function Categories() {
               <Label>Type</Label>
               <Select value={editType} onValueChange={(v) => setEditType(v as TransactionType)}>
                 <SelectTrigger className="mt-1.5">
-                  <SelectValue />
+                  <SelectValue>
+                    {editType === "income" ? "Income" : "Expense"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="expense">Expense</SelectItem>

@@ -12,7 +12,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -68,6 +68,18 @@ function TransfersSection({ assets }: { assets?: Asset[] }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Transfers between assets</CardTitle>
+        <CardAction>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setEditing(null)
+              setDialogOpen(true)
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Add transfer
+          </Button>
+        </CardAction>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -75,19 +87,7 @@ function TransfersSection({ assets }: { assets?: Asset[] }) {
         ) : isError ? (
           <p className="text-sm text-destructive">Failed to load transfers.</p>
         ) : !transfers || transfers.length === 0 ? (
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">No transfers yet.</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setEditing(null)
-                setDialogOpen(true)
-              }}
-            >
-              <Plus className="mr-1 h-4 w-4" /> Add transfer
-            </Button>
-          </div>
+          <p className="text-sm text-muted-foreground">No transfers yet.</p>
         ) : (
           <Table>
             <TableHeader>
@@ -145,19 +145,6 @@ function TransfersSection({ assets }: { assets?: Asset[] }) {
           </Table>
         )}
       </CardContent>
-
-      <div className="px-(--card-spacing) pb-(--card-spacing)">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setEditing(null)
-            setDialogOpen(true)
-          }}
-        >
-          <Plus className="mr-1 h-4 w-4" /> Add transfer
-        </Button>
-      </div>
 
       <TransferDialog
         open={dialogOpen}

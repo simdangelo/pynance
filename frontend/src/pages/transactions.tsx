@@ -1,7 +1,8 @@
-import { useState } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMemo, useState } from "react"
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { api } from "@/lib/api"
 import type { Transaction, TransactionType } from "@/types/api"
@@ -29,6 +30,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+]
 
 export default function Transactions() {
   const queryClient = useQueryClient()
@@ -42,6 +63,24 @@ export default function Transactions() {
   const [editing, setEditing] = useState<Transaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
 
+  const { data: summary, isLoading: summaryLoading } = useQuery({
+    queryKey: ["summary", year, month],
+    queryFn: () => api.transactions.summary(year, month),
+    placeholderData: keepPreviousData,
+  })
+
+  const { data: comparison } = useQuery({
+    queryKey: ["comparison", year, month],
+    queryFn: () => api.transactions.comparison(year, month),
+    placeholderData: keepPreviousData,
+  })
+
+  const { data: spending, isError: spendingError } = useQuery({
+    queryKey: ["spending", year, month],
+    queryFn: () => api.transactions.summaryByCategory("expense", year, month),
+    placeholderData: keepPreviousData,
+  })
+
   const { data: transactions, isLoading, isError } = useQuery({
     queryKey: ["transactions", { year, month, q, type, categoryId }],
     queryFn: () =>
@@ -52,6 +91,7 @@ export default function Transactions() {
         transaction_type: type === "all" ? undefined : type,
         category_id: categoryId === "all" ? undefined : categoryId,
       }),
+    placeholderData: keepPreviousData,
   })
 
   const { data: categories, isError: categoriesError } = useQuery({
@@ -61,6 +101,30 @@ export default function Transactions() {
 
   const categoryName = (id: number) =>
     categories?.find((c) => c.id === id)?.name ?? "Unknown"
+
+  const netAmount = useMemo(() => {
+    if (!summary) return null
+    return (Number(summary.income) - Number(summary.expense)).toFixed(2)
+  }, [summary])
+
+  const comparisonText = useMemo(() => {
+    if (!comparison) return null
+    const prev = Number(comparison.previous.expense)
+    const cur = Number(comparison.current.expense)
+    if (prev === 0) return null
+    const delta = cur - prev
+    const sign = delta > 0 ? "+" : ""
+    return `${sign}${delta.toFixed(2)} vs last month`
+  }, [comparison])
+
+  const chartData = useMemo(
+    () =>
+      (spending ?? []).map((row) => ({
+        category: row.category_name,
+        amount: Number(row.amount),
+      })),
+    [spending],
+  )
 
   const deleteMutation = useMutation({
     mutationFn: api.transactions.remove,
@@ -103,7 +167,9 @@ export default function Transactions() {
           onValueChange={(v) => setType(v as TransactionType | "all")}
         >
           <SelectTrigger className="w-[130px]">
-            <SelectValue />
+            <SelectValue>
+              {type === "all" ? "All" : type === "income" ? "Income" : "Expense"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
@@ -116,7 +182,11 @@ export default function Transactions() {
           onValueChange={(v) => setCategoryId(v === "all" ? "all" : Number(v))}
         >
           <SelectTrigger className="w-[180px]">
-            <SelectValue />
+            <SelectValue>
+              {categoryId === "all"
+                ? "All categories"
+                : (categoryName(categoryId) ?? "All categories")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent className="min-w-[240px]">
             <SelectItem value="all">All categories</SelectItem>
@@ -128,6 +198,94 @@ export default function Transactions() {
           </SelectContent>
         </Select>
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Income</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summaryLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <Money
+                value={summary?.income ?? "0"}
+                className="text-2xl font-semibold text-emerald-600"
+              />
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Expense</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summaryLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <Money
+                value={summary?.expense ?? "0"}
+                className="text-2xl font-semibold text-rose-600"
+              />
+            )}
+            {comparisonText && (
+              <p className="mt-1 text-xs text-muted-foreground">{comparisonText}</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Net</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summaryLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : netAmount && Number(netAmount) >= 0 ? (
+              <Money value={netAmount} className="text-2xl font-semibold text-sky-600" />
+            ) : (
+              <Money value={netAmount ?? "0"} className="text-2xl font-semibold text-rose-600" />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Spending by category · {MONTHS[month - 1]} {year}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {spendingError ? (
+              <p className="text-sm text-destructive">Failed to load spending.</p>
+            ) : chartData.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No spending this month.</p>
+            ) : (
+              <ChartContainer config={{}} className="h-[280px] w-full">
+                <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="category"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tick={{ className: "font-numeric text-xs" }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ className: "font-numeric text-xs" }}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey="amount"
+                    fill="var(--color-rose-600, #e11d48)"
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
+                  />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
 
       <Card>
         <CardHeader>

@@ -46,10 +46,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
                 )
               }
             >
@@ -58,7 +58,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               {showBadge && (
                 <Badge
                   variant="secondary"
-                  className="ml-auto bg-amber-50 text-amber-700"
+                  className="ml-auto bg-ochre/10 text-ochre"
                 >
                   {dueCount}
                 </Badge>
@@ -77,10 +77,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors",
+                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors",
                   isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground/70 hover:bg-accent/50 hover:text-foreground",
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground/70 hover:bg-secondary/50 hover:text-foreground",
                 )
               }
             >

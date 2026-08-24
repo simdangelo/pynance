@@ -5,6 +5,7 @@ import { Play } from "lucide-react"
 import { api, ApiError } from "@/lib/api"
 import type { Category, RecurringTemplate } from "@/types/api"
 import { Money } from "@/components/money"
+import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,17 +14,11 @@ import { frequencyLabel } from "@/components/frequency-label"
 export function DueNowCard({
   templates,
   categories,
-  isLoading,
-  isError,
 }: {
   templates: RecurringTemplate[]
   categories?: Category[]
-  isLoading?: boolean
-  isError?: boolean
 }) {
   const queryClient = useQueryClient()
-
-  const dueTemplates = templates.filter((t) => t.active && t.due)
 
   const generateMutation = useMutation({
     mutationFn: api.recurringTemplates.generate,
@@ -42,92 +37,57 @@ export function DueNowCard({
     },
   })
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Due now</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (isError) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Due now</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-destructive">Failed to load templates.</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (dueTemplates.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Due now</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Nothing due — templates up to date.
-          </p>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="text-base">Due now</CardTitle>
-        <Badge variant="secondary" className="bg-amber-50 text-amber-700">
-          {dueTemplates.length} due
+        <Badge variant="secondary" className="bg-ochre/10 text-ochre">
+          {templates.length} due
         </Badge>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col gap-2">
-          {dueTemplates.map((template) => (
-            <div
-              key={template.id}
-              className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/50 px-4 py-3"
-            >
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-semibold text-amber-900">
-                  {template.description}
-                </span>
-                <span className="text-xs text-amber-700">
-                  {frequencyLabel(template.frequency, template.interval)} · was
-                  due {template.next_occurrence}
-                </span>
+        <div className="-my-2 divide-y divide-border">
+          {templates.map((template) => {
+            const income =
+              categories?.find((c) => c.id === template.category_id)
+                ?.transaction_type === "income"
+            return (
+              <div
+                key={template.id}
+                className="flex items-center justify-between gap-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {template.description}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {frequencyLabel(template.frequency, template.interval)} ·
+                    was due {template.next_occurrence}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <Money
+                    value={
+                      income
+                        ? template.amount
+                        : (-Number(template.amount)).toFixed(2)
+                    }
+                    className={cn(
+                      "text-sm font-medium",
+                      income ? "text-moss" : "text-clay",
+                    )}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => generateMutation.mutate(template.id)}
+                    disabled={generateMutation.isPending}
+                  >
+                    <Play className="mr-1 h-3.5 w-3.5" /> Record
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Money
-                  value={
-                    categories?.find((c) => c.id === template.category_id)
-                      ?.transaction_type === "expense"
-                      ? (-Number(template.amount)).toFixed(2)
-                      : template.amount
-                  }
-                  className="text-sm font-semibold text-amber-900"
-                />
-                <Button
-                  size="sm"
-                  className="bg-amber-600 hover:bg-amber-700"
-                  onClick={() => generateMutation.mutate(template.id)}
-                  disabled={generateMutation.isPending}
-                >
-                  <Play className="mr-1 h-3.5 w-3.5" /> Record
-                </Button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </CardContent>
     </Card>

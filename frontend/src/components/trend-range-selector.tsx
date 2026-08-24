@@ -1,5 +1,4 @@
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Segmented } from "@/components/segmented"
 
 export type TrendRange = "ALL" | "5Y" | "1Y" | "YTD"
 
@@ -12,23 +11,13 @@ interface TrendRangeSelectorProps {
 
 export function TrendRangeSelector({ value, onChange }: TrendRangeSelectorProps) {
   return (
-    <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
-      {RANGES.map((range) => (
-        <Button
-          key={range}
-          type="button"
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "h-6 px-2 text-xs",
-            value === range && "bg-accent text-accent-foreground",
-          )}
-          onClick={() => onChange(range)}
-        >
-          {range}
-        </Button>
-      ))}
-    </div>
+    <Segmented
+      size="sm"
+      variant="dark"
+      value={value}
+      onChange={(range) => onChange(range as TrendRange)}
+      options={RANGES.map((range) => ({ value: range, label: range }))}
+    />
   )
 }
 

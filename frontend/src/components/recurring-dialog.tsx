@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { api } from "@/lib/api"
 import { todayLocalISO } from "@/lib/utils"
-import type { Frequency, RecurringTemplate } from "@/types/api"
-import { TypeBadge } from "@/components/type-badge"
+import type { Frequency, RecurringTemplate, TransactionType } from "@/types/api"
+import { Money } from "@/components/money"
+import { DateField } from "@/components/date-field"
+import { TypeToggle } from "@/components/type-toggle"
 import { frequencyLabel } from "@/components/frequency-label"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -38,6 +41,7 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
   const queryClient = useQueryClient()
   const isEditing = Boolean(template)
 
+  const [type, setType] = useState<TransactionType>("income")
   const [description, setDescription] = useState("")
   const [amount, setAmount] = useState("")
   const [categoryId, setCategoryId] = useState("")
@@ -63,10 +67,37 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
     }
   }, [open, template])
 
+  // Remember the last category chosen for each type, so toggling back restores it.
+  const categoryByType = useRef<Partial<Record<TransactionType, number>>>({})
+
   const selectedCategory = useMemo(
     () => categories?.find((c) => String(c.id) === categoryId),
     [categories, categoryId],
   )
+
+  const income = type === "income"
+
+  const filteredCategories = useMemo(
+    () => (categories ?? []).filter((c) => c.transaction_type === type),
+    [categories, type],
+  )
+
+  // When editing, derive the type from the template's category once categories are loaded.
+  useEffect(() => {
+    if (open && template && categories && categoryId) {
+      const category = categories.find((c) => String(c.id) === categoryId)
+      if (category) {
+        setType(category.transaction_type)
+        categoryByType.current[category.transaction_type] = Number(categoryId)
+      }
+    }
+  }, [open, template, categories, categoryId])
+
+  const handleTypeChange = (newType: TransactionType) => {
+    setType(newType)
+    const saved = categoryByType.current[newType]
+    setCategoryId(saved ? String(saved) : "")
+  }
 
   const mutation = useMutation({
     mutationFn: (data: Parameters<typeof api.recurringTemplates.create>[0]) =>
@@ -96,9 +127,11 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
     })
   }
 
+  const freq = frequencyLabel(frequency, Number(interval) || 1)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit recurring template" : "Add recurring template"}
@@ -109,69 +142,84 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
               : "Define a template and generate its transactions when they happen."}
           </DialogDescription>
         </DialogHeader>
+
         <form onSubmit={submit} className="space-y-4">
-          <div>
+          {/* Type toggle */}
+          <TypeToggle value={type} onChange={handleTypeChange} />
+
+          {/* Category */}
+          <div className="space-y-1.5">
             <Label>Category</Label>
             <Select
               value={categoryId}
               onValueChange={(v) => {
-                if (v) setCategoryId(v)
+                if (v) {
+                  setCategoryId(v)
+                  categoryByType.current[type] = Number(v)
+                }
               }}
               required
             >
-              <SelectTrigger className="mt-1.5">
+              <SelectTrigger className="w-full">
                 <SelectValue>
-                  {selectedCategory ? (
-                    <span className="flex items-center gap-2">
-                      {selectedCategory.name}
-                      <TypeBadge type={selectedCategory.transaction_type} />
-                    </span>
-                  ) : (
-                    "Select a category"
-                  )}
+                  {selectedCategory ? selectedCategory.name : "Select a category"}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent className="min-w-[240px]">
-                {categories?.map((category) => (
+              <SelectContent>
+                {filteredCategories.map((category) => (
                   <SelectItem key={category.id} value={String(category.id)}>
-                    <span className="flex items-center gap-2">
-                      {category.name}
-                      <TypeBadge type={category.transaction_type} />
-                    </span>
+                    {category.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div>
+
+          {/* Description */}
+          <div className="space-y-1.5">
             <Label>Description</Label>
             <Input
               required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g. Rent"
-              className="mt-1.5"
             />
           </div>
-          <div>
+
+          {/* Amount */}
+          <div className="space-y-1.5">
             <Label>Amount</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              className="mt-1.5 font-numeric"
-            />
+            <div className="relative">
+              <span
+                className={cn(
+                  "pointer-events-none absolute inset-y-0 left-3 flex items-center font-numeric text-lg font-medium",
+                  income ? "text-moss" : "text-clay",
+                )}
+              >
+                {income ? "+" : "−"} €&nbsp;
+              </span>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                required
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                className="h-10 pl-12 font-numeric text-lg"
+              />
+            </div>
           </div>
+
+          {/* Frequency + Interval */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="space-y-1.5">
               <Label>Frequency</Label>
               <Select value={frequency} onValueChange={(v) => setFrequency(v as Frequency)}>
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue>{frequencyLabel(frequency, Number(interval) || 1)}</SelectValue>
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {frequency.charAt(0).toUpperCase() + frequency.slice(1)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {FREQUENCIES.map((f) => (
@@ -182,7 +230,7 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Interval</Label>
               <Input
                 type="number"
@@ -191,29 +239,25 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
                 required
                 value={interval}
                 onChange={(e) => setInterval(e.target.value)}
-                className="mt-1.5 font-numeric"
+                className="font-numeric"
                 aria-label="Interval"
               />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {frequencyLabel(frequency, Number(interval) || 2)}
-              </p>
             </div>
           </div>
-          <div>
-            <Label>Next occurrence</Label>
-            <Input
-              required
-              value={nextOccurrence}
-              onChange={(e) => setNextOccurrence(e.target.value)}
-              placeholder="YYYY-MM-DD"
-              pattern="\d{4}-\d{2}-\d{2}"
-              className="mt-1.5 font-numeric"
-            />
-          </div>
-          <div>
+
+          {/* Next occurrence */}
+          <DateField
+            label="Next occurrence"
+            value={nextOccurrence}
+            onChange={setNextOccurrence}
+            required
+          />
+
+          {/* Status */}
+          <div className="space-y-1.5">
             <Label>Status</Label>
             <Select value={active} onValueChange={(v) => { if (v) setActive(v) }}>
-              <SelectTrigger className="mt-1.5">
+              <SelectTrigger className="w-full">
                 <SelectValue>{active === "true" ? "Active" : "Paused"}</SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -222,12 +266,34 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
               </SelectContent>
             </Select>
           </div>
+
+          {/* Preview line */}
+          <div
+            className={cn(
+              "flex items-center justify-between rounded-lg px-3.5 py-2.5",
+              income ? "bg-moss/10" : "bg-clay/10",
+            )}
+          >
+            <span className="text-sm text-muted-foreground">
+              Recurs <span className="font-medium text-foreground">{freq}</span> · next{" "}
+              {nextOccurrence}
+            </span>
+            <Money
+              value={amount || "0"}
+              signed
+              className={cn(
+                "font-medium",
+                income ? "text-moss" : "text-clay",
+              )}
+            />
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {isEditing ? "Save" : "Add"}
+              {isEditing ? "Save" : "Add template"}
             </Button>
           </DialogFooter>
         </form>

@@ -7,10 +7,11 @@ import { api } from "@/lib/api"
 import type { Transaction, TransactionType } from "@/types/api"
 import { Money } from "@/components/money"
 import { MonthPicker } from "@/components/month-picker"
-import { PageHeader } from "@/components/page-header"
 import { TransactionDialog } from "@/components/transaction-dialog"
 import { TypeBadge } from "@/components/type-badge"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { EmptyState } from "@/components/empty-state"
+import { Stat } from "@/components/stat"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -29,11 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-]
 
 export default function Transactions() {
   const queryClient = useQueryClient()
@@ -74,6 +70,14 @@ export default function Transactions() {
   const categoryName = (id: number) =>
     categories?.find((c) => c.id === id)?.name ?? "Unknown"
 
+  const hasActiveFilters = q !== "" || type !== "all" || categoryId !== "all"
+
+  const clearFilters = () => {
+    setQ("")
+    setType("all")
+    setCategoryId("all")
+  }
+
   const deleteMutation = useMutation({
     mutationFn: api.transactions.remove,
     onSuccess: () => {
@@ -82,54 +86,60 @@ export default function Transactions() {
     onError: () => toast.error("Failed to delete transaction"),
   })
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Transactions"
-        subtitle="Record and manage your income and expenses."
-        action={
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setDialogOpen(true)
-            }}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Add
-          </Button>
-        }
-      />
+  const income = summary?.income ?? "0"
+  const expense = summary?.expense ?? "0"
+  const net = (Number(income) - Number(expense)).toFixed(2)
 
-      {/* Context strip — one line, no chart */}
-      <Card>
-        <CardContent className="py-4">
-          {summaryLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {MONTHS[month - 1]} {year} ·{" "}
-              <span className="text-emerald-600">
-                in <Money value={summary?.income ?? "0"} className="font-semibold" />
-              </span>{" "}
-              ·{" "}
-              <span className="text-rose-600">
-                out{" "}
-                <Money
-                  value={(-(Number(summary?.expense ?? 0))).toFixed(2)}
-                  className="font-semibold"
-                />
-              </span>{" "}
-              ·{" "}
-              <span className="text-sky-600">
-                net{" "}
-                <Money
-                  value={(Number(summary?.income ?? 0) - Number(summary?.expense ?? 0)).toFixed(2)}
-                  className="font-semibold"
-                />
-              </span>
-            </p>
-          )}
-        </CardContent>
-      </Card>
+  return (
+    <div className="space-y-5">
+      {/* Top band: month KPIs + Add */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <section className="flex flex-wrap items-baseline gap-x-10 gap-y-3">
+          <Stat
+            label="In"
+            value={
+              summaryLoading ? (
+                <span className="text-muted-foreground/40">—</span>
+              ) : (
+                <Money value={income} />
+              )
+            }
+            tone="positive"
+            size="lg"
+          />
+          <Stat
+            label="Out"
+            value={
+              summaryLoading ? (
+                <span className="text-muted-foreground/40">—</span>
+              ) : (
+                <Money value={(-Number(expense)).toFixed(2)} />
+              )
+            }
+            tone="negative"
+            size="lg"
+          />
+          <Stat
+            label="Net"
+            value={
+              summaryLoading ? (
+                <span className="text-muted-foreground/40">—</span>
+              ) : (
+                <Money value={net} signed />
+              )
+            }
+            size="lg"
+          />
+        </section>
+        <Button
+          onClick={() => {
+            setEditing(null)
+            setDialogOpen(true)
+          }}
+        >
+          <Plus className="mr-1 h-4 w-4" /> Add transaction
+        </Button>
+      </div>
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-end gap-3">
@@ -188,7 +198,7 @@ export default function Transactions() {
       </div>
 
       {/* Table */}
-      <Card>
+      <Card className="p-0">
         <CardContent className="p-0">
           {isLoading ? (
             <p className="p-6 text-sm text-muted-foreground">Loading…</p>
@@ -197,9 +207,22 @@ export default function Transactions() {
               Failed to load transactions.
             </p>
           ) : !transactions || transactions.length === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground">
-              No transactions match the filters.
-            </p>
+            <EmptyState
+              icon={Search}
+              title="No transactions"
+              subtitle={
+                hasActiveFilters
+                  ? "No transactions match these filters."
+                  : "No transactions recorded for this month."
+              }
+              action={
+                hasActiveFilters ? (
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -218,7 +241,7 @@ export default function Transactions() {
                       {t.occurred_on}
                     </TableCell>
                     <TableCell>
-                      <span className="block max-w-[280px] truncate">
+                      <span className="block max-w-[320px] truncate">
                         {t.description}
                       </span>
                     </TableCell>
@@ -237,8 +260,8 @@ export default function Transactions() {
                         }
                         className={
                           t.transaction_type === "income"
-                            ? "text-emerald-600"
-                            : "text-rose-600"
+                            ? "font-medium text-moss"
+                            : "font-medium text-clay"
                         }
                       />
                     </TableCell>
@@ -246,7 +269,7 @@ export default function Transactions() {
                       <div className="flex justify-end gap-1">
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="icon-sm"
                           aria-label="Edit transaction"
                           onClick={() => {
                             setEditing(t)
@@ -257,7 +280,7 @@ export default function Transactions() {
                         </Button>
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="icon-sm"
                           aria-label="Delete transaction"
                           onClick={() => setDeleteTarget(t)}
                         >
@@ -284,9 +307,12 @@ export default function Transactions() {
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="Delete transaction?"
         description={
-          deleteTarget
-            ? `"${deleteTarget.description}" (${deleteTarget.amount} on ${deleteTarget.occurred_on}) will be permanently removed.`
-            : undefined
+          deleteTarget ? (
+            <>
+              "{deleteTarget.description}" (<Money value={deleteTarget.amount} /> on{" "}
+              {deleteTarget.occurred_on}) will be permanently removed.
+            </>
+          ) : undefined
         }
         onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
       />

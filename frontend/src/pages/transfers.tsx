@@ -1,18 +1,16 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { ArrowRight, Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { ArrowLeftRight, ArrowRight, Pencil, Plus, Trash2 } from "lucide-react"
 
 import { api } from "@/lib/api"
 import type { Asset, Transfer } from "@/types/api"
 import { Money } from "@/components/money"
-import { MonthPicker } from "@/components/month-picker"
-import { PageHeader } from "@/components/page-header"
 import { TransferDialog } from "@/components/transfer-dialog"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { EmptyState } from "@/components/empty-state"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -22,29 +20,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-const MONTH_ABBREV = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-]
-
 export default function Transfers() {
   const queryClient = useQueryClient()
-  const now = new Date()
-  const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [q, setQ] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Transfer | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transfer | null>(null)
 
   const { data: transfers, isLoading, isError } = useQuery({
-    queryKey: ["transfers", { year, month, q }],
-    queryFn: () => api.transfers.list({ year, month, q: q || undefined }),
-  })
-
-  const { data: yearTransfers } = useQuery({
-    queryKey: ["transfers", { year }],
-    queryFn: () => api.transfers.list({ year }),
+    queryKey: ["transfers"],
+    queryFn: () => api.transfers.list(),
   })
 
   const { data: assets } = useQuery({
@@ -52,25 +36,8 @@ export default function Transfers() {
     queryFn: api.assets.list,
   })
 
-  const assetName = (id: number) => assets?.find((a: Asset) => a.id === id)?.name ?? "Unknown"
-
-  const monthTotal = useMemo(
-    () =>
-      (transfers ?? [])
-        .reduce((sum, t) => sum + Number(t.amount), 0)
-        .toFixed(2),
-    [transfers],
-  )
-
-  const monthCount = transfers?.length ?? 0
-
-  const yearTotal = useMemo(
-    () =>
-      (yearTransfers ?? [])
-        .reduce((sum, t) => sum + Number(t.amount), 0)
-        .toFixed(2),
-    [yearTransfers],
-  )
+  const assetName = (id: number) =>
+    assets?.find((a: Asset) => a.id === id)?.name ?? "Unknown"
 
   const deleteMutation = useMutation({
     mutationFn: api.transfers.remove,
@@ -81,70 +48,38 @@ export default function Transfers() {
     onError: () => toast.error("Failed to delete transfer"),
   })
 
+  const openCreate = () => {
+    setEditing(null)
+    setDialogOpen(true)
+  }
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Transfers"
-        subtitle="Move money between assets."
-        action={
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setDialogOpen(true)
-            }}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Add
-          </Button>
-        }
-      />
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm font-medium text-muted-foreground">This month</p>
-            <Money value={monthTotal} className="text-2xl font-semibold" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm font-medium text-muted-foreground">
-              Count · {MONTH_ABBREV[month - 1]}
-            </p>
-            <p className="text-2xl font-semibold">{monthCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm font-medium text-muted-foreground">This year</p>
-            <Money value={yearTotal} className="text-2xl font-semibold" />
-          </CardContent>
-        </Card>
+    <div className="space-y-5">
+      {/* Add action */}
+      <div className="flex flex-wrap items-center justify-end gap-4">
+        <Button onClick={openCreate}>
+          <Plus className="mr-1 h-4 w-4" /> Add transfer
+        </Button>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <MonthPicker year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search description..."
-            className="pl-9"
-          />
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Transfers · {year}</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Transfers list */}
+      <Card className="p-0">
+        <CardContent className="p-0">
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="p-6 text-sm text-muted-foreground">Loading…</p>
           ) : isError ? (
-            <p className="text-sm text-destructive">Failed to load transfers.</p>
+            <p className="p-6 text-sm text-destructive">Failed to load transfers.</p>
           ) : !transfers || transfers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No transfers this month.</p>
+            <EmptyState
+              icon={ArrowLeftRight}
+              title="No transfers yet"
+              subtitle="Move money from one asset to another."
+              action={
+                <Button size="sm" onClick={openCreate}>
+                  <Plus className="mr-1 h-4 w-4" /> Add transfer
+                </Button>
+              }
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -159,25 +94,29 @@ export default function Transfers() {
               <TableBody>
                 {transfers.map((transfer) => (
                   <TableRow key={transfer.id}>
-                    <TableCell className="font-numeric text-sm">{transfer.occurred_on}</TableCell>
+                    <TableCell className="font-numeric text-sm">
+                      {transfer.occurred_on}
+                    </TableCell>
                     <TableCell>
                       <span className="flex items-center gap-1.5">
                         {assetName(transfer.source_asset_id)}
-                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        <ArrowRight className="size-3.5 text-muted-foreground" />
                         {assetName(transfer.destination_asset_id)}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="block max-w-[280px] truncate">{transfer.description}</span>
+                      <span className="block max-w-[280px] truncate">
+                        {transfer.description}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Money value={transfer.amount} />
+                      <Money value={transfer.amount} className="font-medium" />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="icon-sm"
                           aria-label="Edit transfer"
                           onClick={() => {
                             setEditing(transfer)
@@ -188,7 +127,7 @@ export default function Transfers() {
                         </Button>
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="icon-sm"
                           aria-label="Delete transfer"
                           onClick={() => setDeleteTarget(transfer)}
                         >
@@ -215,9 +154,12 @@ export default function Transfers() {
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="Delete transfer?"
         description={
-          deleteTarget
-            ? `Transfer of ${deleteTarget.amount} on ${deleteTarget.occurred_on} will be permanently removed.`
-            : undefined
+          deleteTarget ? (
+            <>
+              Transfer of <Money value={deleteTarget.amount} /> on{" "}
+              {deleteTarget.occurred_on} will be permanently removed.
+            </>
+          ) : undefined
         }
         onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
       />

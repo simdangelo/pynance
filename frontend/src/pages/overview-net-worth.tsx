@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { Cell, Pie, PieChart, Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Link } from "react-router-dom"
+import { ArrowRight } from "lucide-react"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { api } from "@/lib/api"
 import type { AssetType } from "@/types/api"
+import { cn } from "@/lib/utils"
 import { Money } from "@/components/money"
 import { TrendRangeSelector, rangeToDates, type TrendRange } from "@/components/trend-range-selector"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,9 +23,21 @@ const ASSET_TYPE_LABEL: Record<AssetType, string> = {
 }
 
 const ASSET_TYPE_COLOR: Record<AssetType, string> = {
-  liquid: "#0284c7",
-  savings: "#059669",
-  etf: "#d97706",
+  liquid: "var(--color-petrol)",
+  savings: "var(--color-moss)",
+  etf: "var(--color-ochre)",
+}
+
+const ASSET_TYPES = Object.keys(ASSET_TYPE_LABEL) as AssetType[]
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+]
+
+function monthLabel(month: string): string {
+  const [y, m] = month.split("-")
+  return `${MONTHS[Number(m) - 1]} ${y}`
 }
 
 export default function OverviewNetWorth() {
@@ -58,44 +73,78 @@ export default function OverviewNetWorth() {
     [trend],
   )
 
+  const deltaPct = useMemo(() => {
+    if (trendData.length < 2) return null
+    const first = trendData[0].amount
+    if (!first) return null
+    return ((trendData[trendData.length - 1].amount - first) / Math.abs(first)) * 100
+  }, [trendData])
+
+  const sinceLabel = trendData.length ? monthLabel(trendData[0].month) : null
+  const isPositive = (deltaPct ?? 0) >= 0
+  const moodColor = isPositive ? "var(--color-petrol)" : "var(--color-clay)"
+  const moodGradientId = isPositive ? "moodPetrol" : "moodClay"
+
   const allocationData = useMemo(() => {
     const totals: Record<AssetType, number> = { liquid: 0, savings: 0, etf: 0 }
     for (const asset of assets ?? []) {
       totals[asset.asset_type] += Number(asset.balance)
     }
     const total = Object.values(totals).reduce((sum, v) => sum + v, 0) || 1
-    return (Object.keys(ASSET_TYPE_LABEL) as AssetType[])
-      .filter((type) => totals[type] > 0)
-      .map((type) => ({
-        name: ASSET_TYPE_LABEL[type],
-        value: totals[type],
-        color: ASSET_TYPE_COLOR[type],
-        pct: ((totals[type] / total) * 100).toFixed(1),
-      }))
+    return ASSET_TYPES.map((type) => ({
+      type,
+      name: ASSET_TYPE_LABEL[type],
+      value: totals[type],
+      pct: (totals[type] / total) * 100,
+      color: ASSET_TYPE_COLOR[type],
+    }))
+      .filter((entry) => entry.value > 0)
+      .sort((a, b) => b.value - a.value)
   }, [assets])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Hero */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Net worth
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {assetsLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : (
-            <Money
-              value={totalBalance}
-              className="text-4xl font-semibold tracking-tight text-sky-600"
-            />
+      <section className="space-y-1.5 pt-1">
+        <span className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground/60 uppercase">
+          Net worth
+        </span>
+        <div className="space-y-1">
+          <span className="block font-numeric text-4xl leading-none font-medium tracking-tight">
+            {assetsLoading ? (
+              <span className="text-muted-foreground/40">—</span>
+            ) : (
+              <Money value={totalBalance} />
+            )}
+          </span>
+          {deltaPct !== null && sinceLabel && (
+            <div className="flex items-center gap-2 text-sm">
+              <span
+                className={cn(
+                  "text-[10px]",
+                  isPositive ? "text-moss" : "text-clay",
+                )}
+              >
+                {isPositive ? "▲" : "▼"}
+              </span>
+              <span
+                className={cn(
+                  "font-numeric font-medium",
+                  isPositive ? "text-moss" : "text-clay",
+                )}
+              >
+                {isPositive ? "+" : "−"}
+                {Math.abs(deltaPct).toFixed(1)}%
+              </span>
+              <span className="text-muted-foreground">
+                · since {sinceLabel} ({range})
+              </span>
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* Trend */}
+      {/* Trend — full width */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -105,19 +154,25 @@ export default function OverviewNetWorth() {
         </CardHeader>
         <CardContent>
           {trendLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
           ) : trendError ? (
-            <p className="text-sm text-destructive">Failed to load net worth.</p>
+            <p className="py-8 text-center text-sm text-destructive">Failed to load net worth.</p>
           ) : trendData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="py-8 text-center text-sm text-muted-foreground">
               No net worth history in this range.
             </p>
           ) : (
             <ChartContainer
-              config={{ amount: { label: "Net worth", color: "#0284c7" } }}
-              className="h-[320px] w-full"
+              config={{ amount: { label: "Net worth", color: moodColor } }}
+              className="h-[380px] w-full"
             >
-              <LineChart data={trendData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+              <AreaChart data={trendData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                <defs>
+                  <linearGradient id={moodGradientId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={moodColor} stopOpacity={0.28} />
+                    <stop offset="100%" stopColor={moodColor} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" />
                 <XAxis
                   dataKey="month"
@@ -129,82 +184,81 @@ export default function OverviewNetWorth() {
                 <YAxis
                   tickLine={false}
                   axisLine={false}
+                  width={70}
                   tick={{ className: "font-numeric text-xs" }}
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Line
+                <Area
                   type="monotone"
                   dataKey="amount"
-                  stroke="var(--color-amount, #0284c7)"
-                  strokeWidth={2}
+                  stroke={moodColor}
+                  strokeWidth={2.5}
+                  fill={`url(#${moodGradientId})`}
                   dot={false}
+                  activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />
-              </LineChart>
+              </AreaChart>
             </ChartContainer>
           )}
         </CardContent>
       </Card>
 
-      {/* Allocation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Allocation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {assetsLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : allocationData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No assets yet.</p>
-          ) : (
-            <div className="grid gap-6 lg:grid-cols-2 lg:items-center">
-              <div className="min-h-[200px]">
-                <ChartContainer config={{}} className="h-[200px] w-full">
-                  <PieChart>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Pie
-                      data={allocationData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={55}
-                      outerRadius={85}
-                      paddingAngle={2}
-                      strokeWidth={0}
-                      isAnimationActive={false}
-                    >
-                      {allocationData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ChartContainer>
+      {/* Allocation — snapshot, type-level, below the chart */}
+      {!assetsLoading && allocationData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="space-y-0.5">
+              <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/60 uppercase">
+                Current allocation
+              </span>
+              <div className="text-sm text-muted-foreground">
+                By asset type, today
               </div>
-              <ul className="space-y-1">
-                {allocationData.map((entry) => (
-                  <li
-                    key={entry.name}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-[2px]"
-                        style={{ backgroundColor: entry.color }}
-                      />
-                      {entry.name}
-                    </span>
-                    <span className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground">
-                        {entry.pct}%
-                      </span>
-                      <Money value={entry.value.toFixed(2)} />
-                    </span>
-                  </li>
-                ))}
-              </ul>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full">
+              {allocationData.map((entry) => (
+                <div
+                  key={entry.type}
+                  className="h-full"
+                  style={{
+                    width: `${Math.max(entry.pct, 1)}%`,
+                    backgroundColor: entry.color,
+                  }}
+                />
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+              {allocationData.map((entry) => (
+                <span key={entry.type} className="flex items-center gap-2 text-sm">
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: entry.color }}
+                  />
+                  <span className="font-medium">{entry.name}</span>
+                  <span className="text-muted-foreground">·</span>
+                  <Money value={entry.value.toFixed(2)} />
+                  <span className="text-muted-foreground">·</span>
+                  <span className="font-numeric text-muted-foreground">
+                    {entry.pct.toFixed(0)}%
+                  </span>
+                </span>
+              ))}
+            </div>
+            <div className="mt-5 border-t border-border pt-4">
+              <Link
+                to="/assets"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-muted-foreground"
+              >
+                View accounts in Assets
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

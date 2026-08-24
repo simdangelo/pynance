@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { Landmark } from "lucide-react"
 
 import { api } from "@/lib/api"
 import type { Asset, AssetType } from "@/types/api"
@@ -72,7 +73,7 @@ export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit asset" : "Add asset"}</DialogTitle>
           <DialogDescription>
@@ -81,23 +82,27 @@ export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
               : "Add a money pool (checking, savings, ...) and its starting balance."}
           </DialogDescription>
         </DialogHeader>
+
         <form onSubmit={submit} className="space-y-4">
-          <div>
+          <div className="space-y-1.5">
             <Label>Name</Label>
             <Input
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Checking"
-              className="mt-1.5"
             />
           </div>
-          <div>
+
+          <div className="space-y-1.5">
             <Label>Type</Label>
             <Select value={assetType} onValueChange={(v) => v && setAssetType(v as AssetType)}>
-              <SelectTrigger className="mt-1.5">
+              <SelectTrigger className="w-full">
                 <SelectValue>
-                  {assetType.charAt(0).toUpperCase() + assetType.slice(1)}
+                  <span className="flex items-center gap-2">
+                    <Landmark className="size-4 text-muted-foreground" />
+                    {assetType.charAt(0).toUpperCase() + assetType.slice(1)}
+                  </span>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -109,21 +114,28 @@ export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
               </SelectContent>
             </Select>
           </div>
-          <div>
+
+          <div className="space-y-1.5">
             <Label>Opening balance</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={openingBalance}
-              onChange={(e) => setOpeningBalance(e.target.value)}
-              placeholder="0.00"
-              className="mt-1.5 font-numeric"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-numeric text-lg font-medium">
+                €&nbsp;
+              </span>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={openingBalance}
+                onChange={(e) => setOpeningBalance(e.target.value)}
+                placeholder="0.00"
+                className="h-10 pl-9 font-numeric text-lg"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
               The balance this pool had when you started tracking.
             </p>
           </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

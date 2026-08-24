@@ -1,17 +1,19 @@
 import { useMemo, useState } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ReferenceLine,
   XAxis,
   YAxis,
 } from "recharts"
 
 import { api } from "@/lib/api"
+import { Money } from "@/components/money"
+import { Stat } from "@/components/stat"
 import { TrendRangeSelector, rangeToDates, type TrendRange } from "@/components/trend-range-selector"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -153,8 +155,41 @@ export default function OverviewCashFlow() {
   const spendingLabel =
     activeMonth === null ? RANGE_LABEL[range] : monthLabel(activeMonth)
 
+  const rangeNet = useMemo(() => {
+    return trendData.reduce((sum, row) => sum + row.net, 0)
+  }, [trendData])
+  const rangeIncome = useMemo(
+    () => trendData.reduce((sum, row) => sum + row.income, 0),
+    [trendData],
+  )
+  const rangeExpense = useMemo(
+    () => trendData.reduce((sum, row) => sum + Math.abs(row.expense), 0),
+    [trendData],
+  )
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Hero — one line of stats */}
+      <section className="flex flex-wrap items-baseline gap-x-12 gap-y-4 pt-1">
+        <Stat
+          label="Income"
+          value={<Money value={rangeIncome.toFixed(2)} />}
+          size="lg"
+          tone="positive"
+        />
+        <Stat
+          label="Expense"
+          value={<Money value={(-rangeExpense).toFixed(2)} />}
+          size="lg"
+          tone="negative"
+        />
+        <Stat
+          label="Net"
+          value={<Money value={rangeNet.toFixed(2)} signed />}
+          size="lg"
+        />
+      </section>
+
       {/* Cash flow chart — income / expense / net over the range */}
       <Card>
         <CardHeader>
@@ -176,13 +211,13 @@ export default function OverviewCashFlow() {
             <>
               <ChartContainer
                 config={{
-                  income: { label: "Income", color: "#059669" },
-                  expense: { label: "Expense", color: "#e11d48" },
-                  net: { label: "Net", color: "#0284c7" },
+                  income: { label: "Income", color: "var(--color-chart-income)" },
+                  expense: { label: "Expense", color: "var(--color-chart-expense)" },
+                  net: { label: "Net", color: "var(--color-petrol)" },
                 }}
-                className="h-[320px] w-full"
+                className="h-[380px] w-full"
               >
-                <LineChart
+                <AreaChart
                   data={trendData}
                   margin={{ top: 8, right: 8, bottom: 0, left: 8 }}
                   onClick={(nextState) => {
@@ -210,35 +245,39 @@ export default function OverviewCashFlow() {
                   {activeMonth && (
                     <ReferenceLine
                       x={activeMonth}
-                      stroke="#0284c7"
+                      stroke="var(--color-petrol)"
                       strokeDasharray="3 3"
                     />
                   )}
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="income"
-                    stroke="var(--color-income, #059669)"
+                    stroke="var(--color-income, #1E8E55)"
+                    fill="transparent"
                     strokeWidth={2}
                     dot={false}
                     isAnimationActive={false}
                   />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="expense"
-                    stroke="var(--color-expense, #e11d48)"
+                    stroke="var(--color-expense, #D6403A)"
+                    fill="transparent"
                     strokeWidth={2}
                     dot={false}
                     isAnimationActive={false}
                   />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="net"
-                    stroke="var(--color-net, #0284c7)"
-                    strokeWidth={2}
+                    stroke="var(--color-net, #2F5D66)"
+                    fill="transparent"
+                    strokeWidth={2.5}
                     dot={false}
+                    activeDot={{ r: 4 }}
                     isAnimationActive={false}
                   />
-                </LineChart>
+                </AreaChart>
               </ChartContainer>
             </>
           )}
@@ -310,7 +349,7 @@ export default function OverviewCashFlow() {
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar
                   dataKey="amount"
-                  fill="var(--color-rose-600, #e11d48)"
+                  fill="var(--color-clay)"
                   radius={[0, 4, 4, 0]}
                   isAnimationActive={false}
                 />

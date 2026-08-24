@@ -1,39 +1,19 @@
-import { NavLink, Outlet } from "react-router-dom"
-import { cn } from "@/lib/utils"
-import { PageHeader } from "@/components/page-header"
+import { Outlet, useLocation } from "react-router-dom"
+
+import { Segmented } from "@/components/segmented"
+
+const TABS = [
+  { value: "net-worth", label: "Net worth", href: "net-worth" },
+  { value: "cash-flow", label: "Cash flow", href: "cash-flow" },
+]
 
 export default function Overview() {
+  const location = useLocation()
+  const active = location.pathname.endsWith("cash-flow") ? "cash-flow" : "net-worth"
+
   return (
-    <div className="space-y-6">
-      <PageHeader title="Overview" subtitle="Your financial overview." />
-      <div className="flex gap-0 border-b border-border">
-        <NavLink
-          to="net-worth"
-          className={({ isActive }) =>
-            cn(
-              "border-b-2 px-4 py-2 text-sm font-medium transition-colors -mb-px",
-              isActive
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )
-          }
-        >
-          Net worth
-        </NavLink>
-        <NavLink
-          to="cash-flow"
-          className={({ isActive }) =>
-            cn(
-              "border-b-2 px-4 py-2 text-sm font-medium transition-colors -mb-px",
-              isActive
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )
-          }
-        >
-          Cash flow
-        </NavLink>
-      </div>
+    <div className="space-y-5">
+      <Segmented size="md" value={active} options={TABS} />
       <Outlet />
     </div>
   )

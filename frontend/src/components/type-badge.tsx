@@ -3,11 +3,11 @@ import { Badge } from "@/components/ui/badge"
 
 export function TypeBadge({ type }: { type: TransactionType }) {
   return type === "income" ? (
-    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
+    <Badge variant="secondary" className="bg-moss/10 text-moss">
       Income
     </Badge>
   ) : (
-    <Badge variant="secondary" className="bg-rose-50 text-rose-700">
+    <Badge variant="secondary" className="bg-clay/10 text-clay">
       Expense
     </Badge>
   )

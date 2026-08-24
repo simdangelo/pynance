@@ -80,6 +80,25 @@ allocation).
 
 ## Deferred (explicitly out of scope for now)
 
+## 5. Telegram bot — `planned`
+
+**Goal:** register transactions from the phone, without opening the PC, so
+nothing gets forgotten.
+
+**Design decisions (made):**
+- **Structured commands**, single-user for now: `/expense 5.50 groceries`,
+  `/income 100 salary`, `/balance`. Parsing is explicit and unambiguous.
+- The bot is a **separate process using long-polling** (no webhook/HTTPS) —
+  simplest for a single-user tool.
+- It is a **third presentation layer**: it calls the same service layer
+  (`create_transaction`), never re-implementing business logic.
+- Identity: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ALLOWED_CHAT_ID` in `.env`;
+  any other chat is ignored. No auth for now (single user).
+- Default asset = the user's Liquid asset; category matched by name.
+- **Scope (v1):** expense, income, balance. No transfers/recurring/editing.
+
+**Multi-user future:** maps chat_id → user; needs Auth (Module 5) first.
+
 | Feature | Why deferred | When it might return |
 |---|---|---|
 | **Budgets** (planned vs actual per category) | User doesn't budget currently | If budgeting becomes a need; slots on top of `summary-by-category` |

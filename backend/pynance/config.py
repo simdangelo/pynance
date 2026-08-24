@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     postgres_host: str
     postgres_port: str
     postgres_db: str
+    telegram_bot_token: SecretStr = SecretStr("")
+    telegram_allowed_chat_id: int = 0
 
     @property
     def database_url(self) -> str:

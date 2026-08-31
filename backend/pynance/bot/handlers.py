@@ -11,6 +11,7 @@ from pynance.config import settings
 from pynance.database import SessionLocal
 from pynance.models.asset import Asset
 from pynance.models.types import AssetType, TransactionType
+from pynance.models.user import User
 from pynance.schemas.transaction import TransactionCreate
 from pynance.services import asset as asset_service
 from pynance.services import category as category_service
@@ -26,11 +27,21 @@ def _is_allowed(update: Update) -> bool:
     return chat_id == settings.telegram_allowed_chat_id
 
 
-def _default_asset_id(session: Session) -> int:
-    """Return the single Liquid asset's id, or the first liquid asset."""
+def _default_user_id(session: Session) -> int:
+    """Return the first user's id (single-user bot)."""
+    user = session.execute(select(User).order_by(User.id)).scalars().first()
+    if user is None:
+        raise RuntimeError("No user exists")
+    return user.id
+
+
+def _default_asset_id(session: Session, user_id: int) -> int:
+    """Return the user's single Liquid asset's id, or the first liquid asset."""
     liquid = (
         session.execute(
-            select(Asset).where(Asset.asset_type == AssetType.LIQUID).order_by(Asset.id)
+            select(Asset)
+            .where(Asset.asset_type == AssetType.LIQUID, Asset.user_id == user_id)
+            .order_by(Asset.id)
         )
         .scalars()
         .first()
@@ -40,9 +51,9 @@ def _default_asset_id(session: Session) -> int:
     return liquid.id
 
 
-def _resolve_category(session: Session, name: str) -> int:
+def _resolve_category(session: Session, user_id: int, name: str) -> int:
     """Match a category by exact name, then case-insensitive."""
-    categories = category_service.list_categories(session)
+    categories = category_service.list_categories(session, user_id)
     exact = next((c for c in categories if c.name == name), None)
     if exact is not None:
         return exact.id
@@ -65,15 +76,18 @@ def _log_transaction(session: Session, transaction_type: TransactionType, parts:
         raise ValueError("Amount must be positive")
     if len(parts) < 2:
         raise ValueError("Missing category")
-    category_id = _resolve_category(session, parts[1])
+
+    user_id = _default_user_id(session)
+    category_id = _resolve_category(session, user_id, parts[1])
     description = " ".join(parts[2:]) if len(parts) > 2 else parts[1]
 
     transaction_service.create_transaction(
         session,
+        user_id,
         TransactionCreate(
             amount=amount,
             category_id=category_id,
-            asset_id=_default_asset_id(session),
+            asset_id=_default_asset_id(session, user_id),
             description=description,
             occurred_on=date.today(),
         ),
@@ -108,7 +122,13 @@ async def expense(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             reply = await asyncio.to_thread(
                 _log_transaction, session, TransactionType.EXPENSE, context.args or []
             )
-    except (ValueError, CategoryNotFoundError, AssetNotFoundError, InvalidOperation) as e:
+    except (
+        ValueError,
+        CategoryNotFoundError,
+        AssetNotFoundError,
+        InvalidOperation,
+        RuntimeError,
+    ) as e:
         reply = str(e)
     await _reply(update, reply)
 
@@ -121,7 +141,13 @@ async def income(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             reply = await asyncio.to_thread(
                 _log_transaction, session, TransactionType.INCOME, context.args or []
             )
-    except (ValueError, CategoryNotFoundError, AssetNotFoundError, InvalidOperation) as e:
+    except (
+        ValueError,
+        CategoryNotFoundError,
+        AssetNotFoundError,
+        InvalidOperation,
+        RuntimeError,
+    ) as e:
         reply = str(e)
     await _reply(update, reply)
 
@@ -131,7 +157,8 @@ async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     try:
         with SessionLocal() as session:
-            balances = await asyncio.to_thread(asset_service.get_asset_balances, session)
+            user_id = _default_user_id(session)
+            balances = await asyncio.to_thread(asset_service.get_asset_balances, session, user_id)
         if not balances:
             reply = "No assets yet."
         else:

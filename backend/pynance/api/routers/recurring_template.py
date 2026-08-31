@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from pynance.api.dependencies import CurrentUser
 from pynance.database import get_db
 from pynance.models.recurring_template import RecurringTemplate
 from pynance.models.transaction import Transaction
@@ -25,10 +26,14 @@ router = APIRouter()
 
 @router.post("", response_model=RecurringTemplateResponse, status_code=status.HTTP_201_CREATED)
 def create_recurring_template(
-    recurring_template: RecurringTemplateCreate, db: Annotated[Session, Depends(get_db)]
+    recurring_template: RecurringTemplateCreate,
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
 ) -> RecurringTemplate:
     try:
-        return recurring_template_service.create_recurring_template(db, recurring_template)
+        return recurring_template_service.create_recurring_template(
+            db, current_user.id, recurring_template
+        )
     except CategoryNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Category doesn't exist"
@@ -37,9 +42,10 @@ def create_recurring_template(
 
 @router.get("", response_model=list[RecurringTemplateResponse], status_code=status.HTTP_200_OK)
 def list_recurring_templates(
+    current_user: CurrentUser,
     db: Annotated[Session, Depends(get_db)],
 ) -> list[RecurringTemplate]:
-    return recurring_template_service.list_recurring_templates(db)
+    return recurring_template_service.list_recurring_templates(db, current_user.id)
 
 
 @router.patch(
@@ -50,11 +56,12 @@ def list_recurring_templates(
 def update_recurring_template(
     recurring_template_id: int,
     update: RecurringTemplateUpdate,
+    current_user: CurrentUser,
     db: Annotated[Session, Depends(get_db)],
 ) -> RecurringTemplate:
     try:
         return recurring_template_service.update_recurring_template(
-            db, recurring_template_id, update
+            db, current_user.id, recurring_template_id, update
         )
     except RecurringTemplateNotFoundError as e:
         raise HTTPException(
@@ -68,10 +75,14 @@ def update_recurring_template(
 
 @router.delete("/{recurring_template_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_recurring_template(
-    recurring_template_id: int, db: Annotated[Session, Depends(get_db)]
+    recurring_template_id: int,
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     try:
-        recurring_template_service.delete_recurring_template(db, recurring_template_id)
+        recurring_template_service.delete_recurring_template(
+            db, current_user.id, recurring_template_id
+        )
     except RecurringTemplateNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Template doesn't exist"
@@ -84,10 +95,12 @@ def delete_recurring_template(
     status_code=status.HTTP_201_CREATED,
 )
 def generate_next(
-    recurring_template_id: int, db: Annotated[Session, Depends(get_db)]
+    recurring_template_id: int,
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
 ) -> Transaction:
     try:
-        return recurring_template_service.generate_next(db, recurring_template_id)
+        return recurring_template_service.generate_next(db, current_user.id, recurring_template_id)
     except RecurringTemplateNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Template doesn't exist"

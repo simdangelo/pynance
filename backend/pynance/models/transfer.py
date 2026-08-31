@@ -21,6 +21,7 @@ class Transfer(Base):
         default=lambda: datetime.now(UTC),
         nullable=False,
     )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
     __table_args__ = (
         CheckConstraint("source_asset_id <> destination_asset_id", name="source_ne_destination"),

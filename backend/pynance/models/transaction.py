@@ -24,6 +24,7 @@ class Transaction(Base):
     )
     category: Mapped[Category] = relationship()
     asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
     @property
     def transaction_type(self) -> TransactionType:

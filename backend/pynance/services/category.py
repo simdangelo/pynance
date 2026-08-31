@@ -11,26 +11,32 @@ from pynance.services.exceptions import (
 )
 
 
-def create_category(db: Session, category: CategoryCreate) -> Category:
+def create_category(db: Session, user_id: int, category: CategoryCreate) -> Category:
     existing = db.execute(
-        select(Category).where(Category.name == category.name)
+        select(Category).where(Category.user_id == user_id, Category.name == category.name)
     ).scalar_one_or_none()
     if existing is not None:
         raise DuplicateCategoryError(f"Category with name '{category.name}' already exists")
 
-    new_category = Category(name=category.name, transaction_type=category.transaction_type)
+    new_category = Category(
+        name=category.name,
+        transaction_type=category.transaction_type,
+        user_id=user_id,
+    )
     db.add(new_category)
     db.commit()
     db.refresh(new_category)
     return new_category
 
 
-def list_categories(db: Session) -> list[Category]:
-    return list(db.execute(select(Category)).scalars().all())
+def list_categories(db: Session, user_id: int) -> list[Category]:
+    return list(db.execute(select(Category).where(Category.user_id == user_id)).scalars().all())
 
 
-def delete_category(db: Session, category_id: int) -> Category:
-    category = db.execute(select(Category).where(Category.id == category_id)).scalar_one_or_none()
+def delete_category(db: Session, user_id: int, category_id: int) -> Category:
+    category = db.execute(
+        select(Category).where(Category.id == category_id, Category.user_id == user_id)
+    ).scalar_one_or_none()
     if category is None:
         raise CategoryNotFoundError(f"Category with id '{category_id}' doesn't exist")
 
@@ -46,8 +52,12 @@ def delete_category(db: Session, category_id: int) -> Category:
     return category
 
 
-def update_category(db: Session, category_id: int, update: CategoryUpdate) -> Category:
-    category = db.execute(select(Category).where(Category.id == category_id)).scalar_one_or_none()
+def update_category(
+    db: Session, user_id: int, category_id: int, update: CategoryUpdate
+) -> Category:
+    category = db.execute(
+        select(Category).where(Category.id == category_id, Category.user_id == user_id)
+    ).scalar_one_or_none()
     if category is None:
         raise CategoryNotFoundError(f"Category with id '{category_id}' doesn't exist")
 

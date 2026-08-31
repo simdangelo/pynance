@@ -1,7 +1,16 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pynance.database import Base
@@ -27,6 +36,7 @@ class RecurringTemplate(Base):
         default=lambda: datetime.now(UTC),
         nullable=False,
     )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
     @property
     def due(self) -> bool:

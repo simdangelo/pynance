@@ -19,13 +19,18 @@ from pynance.services.exceptions import (
 )
 
 
-def create_asset(db: Session, asset: AssetCreate) -> Asset:
-    existing_asset = db.execute(select(Asset).where(Asset.name == asset.name)).scalar_one_or_none()
+def create_asset(db: Session, user_id: int, asset: AssetCreate) -> Asset:
+    existing_asset = db.execute(
+        select(Asset).where(Asset.user_id == user_id, Asset.name == asset.name)
+    ).scalar_one_or_none()
     if existing_asset:
         raise DuplicateAssetNameError(f"Asset with name {asset.name} already exists")
 
     new_asset = Asset(
-        name=asset.name, asset_type=asset.asset_type, opening_balance=asset.opening_balance
+        name=asset.name,
+        asset_type=asset.asset_type,
+        opening_balance=asset.opening_balance,
+        user_id=user_id,
     )
     db.add(new_asset)
     db.commit()
@@ -33,23 +38,25 @@ def create_asset(db: Session, asset: AssetCreate) -> Asset:
     return new_asset
 
 
-def get_asset(db: Session, asset_id: int) -> Asset:
-    asset = db.execute(select(Asset).where(Asset.id == asset_id)).scalar_one_or_none()
+def get_asset(db: Session, user_id: int, asset_id: int) -> Asset:
+    asset = db.execute(
+        select(Asset).where(Asset.id == asset_id, Asset.user_id == user_id)
+    ).scalar_one_or_none()
     if not asset:
         raise AssetNotFoundError(f"Asset with id {asset_id} doesn't exist")
     return asset
 
 
-def list_assets(db: Session) -> list[Asset]:
-    return list(db.execute(select(Asset)).scalars().all())
+def list_assets(db: Session, user_id: int) -> list[Asset]:
+    return list(db.execute(select(Asset).where(Asset.user_id == user_id)).scalars().all())
 
 
-def update_asset(db: Session, asset_id: int, update: AssetUpdate) -> Asset:
-    asset = get_asset(db, asset_id)
+def update_asset(db: Session, user_id: int, asset_id: int, update: AssetUpdate) -> Asset:
+    asset = get_asset(db, user_id, asset_id)
 
     if update.name is not None and update.name != asset.name:
         existing_asset = db.execute(
-            select(Asset).where(Asset.name == update.name)
+            select(Asset).where(Asset.user_id == user_id, Asset.name == update.name)
         ).scalar_one_or_none()
         if existing_asset:
             raise DuplicateAssetNameError(f"Asset with name {update.name} already exists")
@@ -62,8 +69,8 @@ def update_asset(db: Session, asset_id: int, update: AssetUpdate) -> Asset:
     return asset
 
 
-def delete_asset(db: Session, asset_id: int) -> Asset:
-    asset = get_asset(db, asset_id)
+def delete_asset(db: Session, user_id: int, asset_id: int) -> Asset:
+    asset = get_asset(db, user_id, asset_id)
     db.delete(asset)
 
     try:
@@ -77,13 +84,15 @@ def delete_asset(db: Session, asset_id: int) -> Asset:
     return asset
 
 
-def get_asset_balance(db: Session, asset_id: int) -> Decimal:
-    return get_asset_balances(db).get(asset_id, Decimal("0"))
+def get_asset_balance(db: Session, user_id: int, asset_id: int) -> Decimal:
+    return get_asset_balances(db, user_id).get(asset_id, Decimal("0"))
 
 
-def get_asset_balances(db: Session) -> dict[int, Decimal]:
+def get_asset_balances(db: Session, user_id: int) -> dict[int, Decimal]:
     # Saldo di partenza
-    opening_balances = db.execute(select(Asset.id, Asset.opening_balance)).all()
+    opening_balances = db.execute(
+        select(Asset.id, Asset.opening_balance).where(Asset.user_id == user_id)
+    ).all()
 
     # (Entrate - uscite)
     transaction_nets = db.execute(
@@ -102,6 +111,7 @@ def get_asset_balances(db: Session) -> dict[int, Decimal]:
         )
         .select_from(Transaction)
         .join(Category, Transaction.category_id == Category.id)
+        .where(Transaction.user_id == user_id)
         .group_by(Transaction.asset_id)
     ).all()
 
@@ -110,7 +120,9 @@ def get_asset_balances(db: Session) -> dict[int, Decimal]:
         select(
             Transfer.destination_asset_id,
             func.coalesce(func.sum(Transfer.amount), 0),
-        ).group_by(Transfer.destination_asset_id)
+        )
+        .where(Transfer.user_id == user_id)
+        .group_by(Transfer.destination_asset_id)
     ).all()
 
     # Trasferimenti Inviati
@@ -118,7 +130,9 @@ def get_asset_balances(db: Session) -> dict[int, Decimal]:
         select(
             Transfer.source_asset_id,
             func.coalesce(func.sum(Transfer.amount), 0),
-        ).group_by(Transfer.source_asset_id)
+        )
+        .where(Transfer.user_id == user_id)
+        .group_by(Transfer.source_asset_id)
     ).all()
 
     balances: dict[int, Decimal] = {}
@@ -149,13 +163,17 @@ def _shift_month(year: int, month: int) -> tuple[int, int]:
     return (year + 1, 1) if month == 12 else (year, month + 1)
 
 
-def get_net_worth_trend(db: Session, start_date: date, end_date: date) -> list[NetWorthTrendPoint]:
-    earliest = db.execute(select(func.min(Transaction.occurred_on))).scalar_one()
+def get_net_worth_trend(
+    db: Session, user_id: int, start_date: date, end_date: date
+) -> list[NetWorthTrendPoint]:
+    earliest = db.execute(
+        select(func.min(Transaction.occurred_on)).where(Transaction.user_id == user_id)
+    ).scalar_one()
     if earliest is not None:
         start_date = max(start_date, earliest)
 
     opening_total = db.execute(
-        select(func.coalesce(func.sum(Asset.opening_balance), 0))
+        select(func.coalesce(func.sum(Asset.opening_balance), 0)).where(Asset.user_id == user_id)
     ).scalar_one()
 
     prior_total = db.execute(
@@ -173,7 +191,7 @@ def get_net_worth_trend(db: Session, start_date: date, end_date: date) -> list[N
         )
         .select_from(Transaction)
         .join(Category, Transaction.category_id == Category.id)
-        .where(Transaction.occurred_on < start_date)
+        .where(Transaction.user_id == user_id, Transaction.occurred_on < start_date)
     ).scalar_one()
 
     transaction_nets = db.execute(
@@ -194,6 +212,7 @@ def get_net_worth_trend(db: Session, start_date: date, end_date: date) -> list[N
         .select_from(Transaction)
         .join(Category, Transaction.category_id == Category.id)
         .where(
+            Transaction.user_id == user_id,
             Transaction.occurred_on >= start_date,
             Transaction.occurred_on <= end_date,
         )

@@ -6,7 +6,7 @@ os.environ["POSTGRES_DB"] = "pynance_test_db"
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, delete, select
+from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import Session, sessionmaker
 
 from pynance.api.main import app
@@ -14,8 +14,10 @@ from pynance.database import Base, get_db
 from pynance.models.asset import Asset
 from pynance.models.category import Category
 from pynance.models.recurring_template import RecurringTemplate
+from pynance.models.session import Session as UserSession
 from pynance.models.transaction import Transaction
 from pynance.models.transfer import Transfer
+from pynance.models.user import User
 
 engine = create_engine(
     "postgresql+psycopg://app_user:app_user_password@localhost:5432/pynance_test_db"
@@ -33,11 +35,13 @@ def setup_database() -> Generator[None]:
 @pytest.fixture
 def db_session(setup_database: Generator[None]) -> Generator[Session]:
     session = TestingSessionLocal()
+    session.execute(delete(UserSession))
     session.execute(delete(Transfer))
     session.execute(delete(Transaction))
     session.execute(delete(RecurringTemplate))
     session.execute(delete(Category))
     session.execute(delete(Asset))
+    session.execute(delete(User))
     session.commit()
     yield session
     session.close()
@@ -49,22 +53,46 @@ def client(db_session: Session) -> Generator[TestClient]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    test_client = TestClient(app)
+    create_user(test_client)
+    login(test_client)
+    yield test_client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def anon_client(db_session: Session) -> Generator[TestClient]:
+    """A client without an authenticated user (for auth-specific tests)."""
+
+    def override_get_db() -> Generator[Session]:
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
-def liquid_asset(db_session: Session) -> int:
-    session = TestingSessionLocal()
-    liquid = session.execute(select(Asset).where(Asset.name == "Liquid")).scalar_one_or_none()
-    if liquid is None:
-        liquid = Asset(name="Liquid", asset_type="liquid")
-        session.add(liquid)
-        session.commit()
-        session.refresh(liquid)
-    asset_id = liquid.id
-    session.close()
-    return asset_id
+def liquid_asset(client: TestClient) -> int:
+    asset = create_asset(client, name="Liquid", asset_type="liquid")
+    return cast("int", asset["id"])
+
+
+def create_user(client: TestClient, email: str = "user@example.com") -> dict[str, Any]:
+    response = client.post(
+        "/api/auth/register",
+        json={"email": email, "password": "password123"},
+    )
+    assert response.status_code == 201, response.text
+    return cast("dict[str, Any]", response.json())
+
+
+def login(client: TestClient, email: str = "user@example.com") -> None:
+    response = client.post(
+        "/api/auth/login",
+        json={"email": email, "password": "password123"},
+    )
+    assert response.status_code == 200, response.text
 
 
 def create_category(client: TestClient, name: str, transaction_type: str) -> dict[str, Any]:
@@ -124,15 +152,13 @@ def create_transaction(
     asset_id: int | None = None,
 ) -> dict[str, Any]:
     if asset_id is None:
-        session = TestingSessionLocal()
-        liquid = session.execute(select(Asset).where(Asset.name == "Liquid")).scalar_one_or_none()
+        assets = client.get("/api/assets").json()
+        liquid = next((a for a in assets if a["asset_type"] == "liquid"), None)
         if liquid is None:
-            liquid = Asset(name="Liquid", asset_type="liquid")
-            session.add(liquid)
-            session.commit()
-            session.refresh(liquid)
-        asset_id = liquid.id
-        session.close()
+            asset = create_asset(client, name="Liquid", asset_type="liquid")
+            asset_id = cast("int", asset["id"])
+        else:
+            asset_id = cast("int", liquid["id"])
 
     response = client.post(
         "/api/transactions",

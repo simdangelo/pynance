@@ -48,3 +48,11 @@ class TransferNotFoundError(Exception):
 
 class SelfTransferError(Exception):
     pass
+
+
+class DuplicateEmailError(Exception):
+    pass
+
+
+class InvalidCredentialsError(Exception):
+    pass

@@ -21,7 +21,7 @@ from pynance.services.exceptions import (
 )
 
 
-def create_transaction(db: Session, transaction: TransactionCreate) -> Transaction:
+def create_transaction(db: Session, user_id: int, transaction: TransactionCreate) -> Transaction:
     category = db.execute(
         select(Category).where(Category.id == transaction.category_id)
     ).scalar_one_or_none()
@@ -38,6 +38,7 @@ def create_transaction(db: Session, transaction: TransactionCreate) -> Transacti
         asset_id=transaction.asset_id,
         description=transaction.description,
         occurred_on=transaction.occurred_on,
+        user_id=user_id,
     )
 
     db.add(new_transaction)
@@ -46,17 +47,19 @@ def create_transaction(db: Session, transaction: TransactionCreate) -> Transacti
     return new_transaction
 
 
-def get_transaction(db: Session, transaction_id: int) -> Transaction:
+def get_transaction(db: Session, user_id: int, transaction_id: int) -> Transaction:
     result = db.execute(
-        select(Transaction).where(Transaction.id == transaction_id)
+        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == user_id)
     ).scalar_one_or_none()
     if result is None:
         raise TransactionNotFoundError(f"Transaction with id '{transaction_id}' doesn't exist")
     return result
 
 
-def update_transaction(db: Session, transaction_id: int, update: TransactionUpdate) -> Transaction:
-    transaction = get_transaction(db, transaction_id)
+def update_transaction(
+    db: Session, user_id: int, transaction_id: int, update: TransactionUpdate
+) -> Transaction:
+    transaction = get_transaction(db, user_id, transaction_id)
 
     new_category_id = (
         update.category_id if update.category_id is not None else transaction.category_id
@@ -80,8 +83,8 @@ def update_transaction(db: Session, transaction_id: int, update: TransactionUpda
     return transaction
 
 
-def delete_transaction(db: Session, transaction_id: int) -> Transaction:
-    transaction = get_transaction(db, transaction_id)
+def delete_transaction(db: Session, user_id: int, transaction_id: int) -> Transaction:
+    transaction = get_transaction(db, user_id, transaction_id)
     db.delete(transaction)
     db.commit()
     return transaction
@@ -95,8 +98,10 @@ class TransactionFilters:
     category_id: int | None = None
 
 
-def list_transactions(db: Session, filter_params: TransactionFilters) -> list[Transaction]:
-    conditions: list[ColumnElement[bool]] = []
+def list_transactions(
+    db: Session, user_id: int, filter_params: TransactionFilters
+) -> list[Transaction]:
+    conditions: list[ColumnElement[bool]] = [Transaction.user_id == user_id]
 
     if filter_params.q:
         conditions.append(Transaction.description.ilike(f"%{filter_params.q}%"))
@@ -141,7 +146,7 @@ class Summary:
     expense: Decimal
 
 
-def get_summary(db: Session, month: int, year: int) -> Summary:
+def get_summary(db: Session, user_id: int, month: int, year: int) -> Summary:
     first_day = date(year, month, 1)
     next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
     first_day_next_month = date(next_year, next_month, 1)
@@ -150,6 +155,7 @@ def get_summary(db: Session, month: int, year: int) -> Summary:
         select(Category.transaction_type, func.sum(Transaction.amount))
         .join(Category, Category.id == Transaction.category_id)
         .where(
+            Transaction.user_id == user_id,
             Transaction.occurred_on >= first_day,
             Transaction.occurred_on < first_day_next_month,
         )
@@ -174,7 +180,7 @@ class SummaryByCategoryRow:
 
 
 def get_summary_by_category(
-    db: Session, transaction_type: TransactionType, month: int, year: int
+    db: Session, user_id: int, transaction_type: TransactionType, month: int, year: int
 ) -> list[SummaryByCategoryRow]:
     first_day = date(year, month, 1)
     next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
@@ -183,6 +189,7 @@ def get_summary_by_category(
     rows = db.execute(
         select(Transaction.category_id, Category.name, func.sum(Transaction.amount))
         .where(
+            Transaction.user_id == user_id,
             Transaction.occurred_on >= first_day,
             Transaction.occurred_on < first_day_next_month,
             Category.transaction_type == transaction_type,
@@ -208,7 +215,7 @@ class TrendPoint:
     expense: Decimal
 
 
-def get_trend(db: Session, date_range: DataRange) -> list[TrendPoint]:
+def get_trend(db: Session, user_id: int, date_range: DataRange) -> list[TrendPoint]:
     year_expr = func.extract("year", Transaction.occurred_on)
     month_expr = func.extract("month", Transaction.occurred_on)
 
@@ -216,6 +223,7 @@ def get_trend(db: Session, date_range: DataRange) -> list[TrendPoint]:
         select(year_expr, month_expr, Category.transaction_type, func.sum(Transaction.amount))
         .join(Category, Category.id == Transaction.category_id)
         .where(
+            Transaction.user_id == user_id,
             Transaction.occurred_on >= date_range.start_date,
             Transaction.occurred_on <= date_range.end_date,
         )
@@ -253,7 +261,9 @@ class TrendByCategory:
     points: list[TrendByCategoryPoint] = field(default_factory=list[TrendByCategoryPoint])
 
 
-def get_trend_by_category(db: Session, date_range: DataRange) -> list[TrendByCategory]:
+def get_trend_by_category(
+    db: Session, user_id: int, date_range: DataRange
+) -> list[TrendByCategory]:
     year_expr = func.extract("year", Transaction.occurred_on)
     month_expr = func.extract("month", Transaction.occurred_on)
 
@@ -261,6 +271,7 @@ def get_trend_by_category(db: Session, date_range: DataRange) -> list[TrendByCat
         select(Category.id, Category.name, year_expr, month_expr, func.sum(Transaction.amount))
         .join(Category, Category.id == Transaction.category_id)
         .where(
+            Transaction.user_id == user_id,
             Transaction.occurred_on >= date_range.start_date,
             Transaction.occurred_on <= date_range.end_date,
         )
@@ -282,7 +293,7 @@ class Comparison:
     previous: Summary
 
 
-def get_comparison(db: Session, year: int, month: int) -> Comparison:
+def get_comparison(db: Session, user_id: int, year: int, month: int) -> Comparison:
     reference_date = date(year, month, 1)
 
     current_year = reference_date.year
@@ -291,7 +302,7 @@ def get_comparison(db: Session, year: int, month: int) -> Comparison:
     previous_year = current_year - 1 if current_month == 1 else current_year
     previous_month = 12 if current_month == 1 else current_month - 1
 
-    current_monthly_summary = get_summary(db, current_month, current_year)
-    previous_monthly_summary = get_summary(db, previous_month, previous_year)
+    current_monthly_summary = get_summary(db, user_id, current_month, current_year)
+    previous_monthly_summary = get_summary(db, user_id, previous_month, previous_year)
 
     return Comparison(current_monthly_summary, previous_monthly_summary)

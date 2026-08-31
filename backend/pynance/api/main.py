@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 
-from pynance.api.routers import asset, category, recurring_template, transaction, transfer
+from pynance.api.routers import asset, auth, category, recurring_template, transaction, transfer
 
 app = FastAPI()
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(category.router, prefix="/api/categories", tags=["categories"])
 app.include_router(transaction.router, prefix="/api/transactions", tags=["transactions"])
 app.include_router(

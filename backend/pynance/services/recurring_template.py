@@ -23,7 +23,7 @@ from pynance.services.exceptions import (
 
 
 def create_recurring_template(
-    db: Session, recurring_template: RecurringTemplateCreate
+    db: Session, user_id: int, recurring_template: RecurringTemplateCreate
 ) -> RecurringTemplate:
     category = db.execute(
         select(Category.id).where(Category.id == recurring_template.category_id)
@@ -41,6 +41,7 @@ def create_recurring_template(
         interval=recurring_template.interval,
         next_occurrence=recurring_template.next_occurrence,
         active=recurring_template.active,
+        user_id=user_id,
     )
 
     db.add(new_recurring_template)
@@ -49,13 +50,22 @@ def create_recurring_template(
     return new_recurring_template
 
 
-def list_recurring_templates(db: Session) -> list[RecurringTemplate]:
-    return list(db.execute(select(RecurringTemplate)).scalars().all())
+def list_recurring_templates(db: Session, user_id: int) -> list[RecurringTemplate]:
+    return list(
+        db.execute(select(RecurringTemplate).where(RecurringTemplate.user_id == user_id))
+        .scalars()
+        .all()
+    )
 
 
-def delete_recurring_template(db: Session, recurring_template_id: int) -> RecurringTemplate:
+def delete_recurring_template(
+    db: Session, user_id: int, recurring_template_id: int
+) -> RecurringTemplate:
     recurring_template = db.execute(
-        select(RecurringTemplate).where(RecurringTemplate.id == recurring_template_id)
+        select(RecurringTemplate).where(
+            RecurringTemplate.id == recurring_template_id,
+            RecurringTemplate.user_id == user_id,
+        )
     ).scalar_one_or_none()
     if not recurring_template:
         raise RecurringTemplateNotFoundError(
@@ -68,10 +78,13 @@ def delete_recurring_template(db: Session, recurring_template_id: int) -> Recurr
 
 
 def update_recurring_template(
-    db: Session, recurring_template_id: int, update: RecurringTemplateUpdate
+    db: Session, user_id: int, recurring_template_id: int, update: RecurringTemplateUpdate
 ) -> RecurringTemplate:
     recurring_template = db.execute(
-        select(RecurringTemplate).where(RecurringTemplate.id == recurring_template_id)
+        select(RecurringTemplate).where(
+            RecurringTemplate.id == recurring_template_id,
+            RecurringTemplate.user_id == user_id,
+        )
     ).scalar_one_or_none()
     if recurring_template is None:
         raise RecurringTemplateNotFoundError(
@@ -92,9 +105,12 @@ def update_recurring_template(
     return recurring_template
 
 
-def generate_next(db: Session, recurring_template_id: int) -> Transaction:
+def generate_next(db: Session, user_id: int, recurring_template_id: int) -> Transaction:
     template = db.execute(
-        select(RecurringTemplate).where(RecurringTemplate.id == recurring_template_id)
+        select(RecurringTemplate).where(
+            RecurringTemplate.id == recurring_template_id,
+            RecurringTemplate.user_id == user_id,
+        )
     ).scalar_one_or_none()
     if not template:
         raise RecurringTemplateNotFoundError(
@@ -109,7 +125,11 @@ def generate_next(db: Session, recurring_template_id: int) -> Transaction:
         )
 
     liquid_asset = (
-        db.execute(select(Asset).where(Asset.asset_type == AssetType.LIQUID).order_by(Asset.id))
+        db.execute(
+            select(Asset)
+            .where(Asset.asset_type == AssetType.LIQUID, Asset.user_id == user_id)
+            .order_by(Asset.id)
+        )
         .scalars()
         .first()
     )
@@ -122,6 +142,7 @@ def generate_next(db: Session, recurring_template_id: int) -> Transaction:
         asset_id=liquid_asset.id,
         description=template.description,
         occurred_on=template.next_occurrence,
+        user_id=user_id,
     )
     db.add(new_transaction)
 

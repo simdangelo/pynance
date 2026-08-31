@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     postgres_db: str
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_allowed_chat_id: int = 0
+    access_session_expire_days: int = 30
 
     @property
     def database_url(self) -> str:

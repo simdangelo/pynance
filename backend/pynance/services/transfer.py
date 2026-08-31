@@ -15,15 +15,15 @@ from pynance.services.exceptions import (
 )
 
 
-def create_transfer(db: Session, transfer: TransferCreate) -> Transfer:
+def create_transfer(db: Session, user_id: int, transfer: TransferCreate) -> Transfer:
     source_asset = db.execute(
-        select(Asset).where(Asset.id == transfer.source_asset_id)
+        select(Asset).where(Asset.id == transfer.source_asset_id, Asset.user_id == user_id)
     ).scalar_one_or_none()
     if not source_asset:
         raise AssetNotFoundError(f"Source asset id '{transfer.source_asset_id}' doesn't exist")
 
     destination_asset = db.execute(
-        select(Asset).where(Asset.id == transfer.destination_asset_id)
+        select(Asset).where(Asset.id == transfer.destination_asset_id, Asset.user_id == user_id)
     ).scalar_one_or_none()
     if not destination_asset:
         raise AssetNotFoundError(
@@ -41,6 +41,7 @@ def create_transfer(db: Session, transfer: TransferCreate) -> Transfer:
         amount=transfer.amount,
         description=transfer.description,
         occurred_on=transfer.occurred_on,
+        user_id=user_id,
     )
 
     db.add(new_transfer)
@@ -49,8 +50,10 @@ def create_transfer(db: Session, transfer: TransferCreate) -> Transfer:
     return new_transfer
 
 
-def get_transfer(db: Session, transfer_id: int) -> Transfer:
-    transfer = db.execute(select(Transfer).where(Transfer.id == transfer_id)).scalar_one_or_none()
+def get_transfer(db: Session, user_id: int, transfer_id: int) -> Transfer:
+    transfer = db.execute(
+        select(Transfer).where(Transfer.id == transfer_id, Transfer.user_id == user_id)
+    ).scalar_one_or_none()
     if not transfer:
         raise TransferNotFoundError(f"Transfer with id '{transfer_id}' doesn't exist")
     return transfer
@@ -65,8 +68,8 @@ class TransferFilters:
     destination_asset_id: int | None = None
 
 
-def list_transfers(db: Session, filter_params: TransferFilters) -> list[Transfer]:
-    conditions: list[ColumnElement[bool]] = []
+def list_transfers(db: Session, user_id: int, filter_params: TransferFilters) -> list[Transfer]:
+    conditions: list[ColumnElement[bool]] = [Transfer.user_id == user_id]
 
     if filter_params.q:
         conditions.append(Transfer.description.ilike(f"%{filter_params.q}%"))
@@ -98,8 +101,10 @@ def list_transfers(db: Session, filter_params: TransferFilters) -> list[Transfer
     return list(db.execute(query).scalars().all())
 
 
-def update_transfer(db: Session, transfer_id: int, update: TransferUpdate) -> Transfer:
-    transfer = get_transfer(db, transfer_id)
+def update_transfer(
+    db: Session, user_id: int, transfer_id: int, update: TransferUpdate
+) -> Transfer:
+    transfer = get_transfer(db, user_id, transfer_id)
 
     new_source_id = (
         update.source_asset_id if update.source_asset_id is not None else transfer.source_asset_id
@@ -110,12 +115,14 @@ def update_transfer(db: Session, transfer_id: int, update: TransferUpdate) -> Tr
         else transfer.destination_asset_id
     )
 
-    source_asset = db.execute(select(Asset).where(Asset.id == new_source_id)).scalar_one_or_none()
+    source_asset = db.execute(
+        select(Asset).where(Asset.id == new_source_id, Asset.user_id == user_id)
+    ).scalar_one_or_none()
     if not source_asset:
         raise AssetNotFoundError(f"Source asset id '{new_source_id}' doesn't exist")
 
     destination_asset = db.execute(
-        select(Asset).where(Asset.id == new_dest_id)
+        select(Asset).where(Asset.id == new_dest_id, Asset.user_id == user_id)
     ).scalar_one_or_none()
     if not destination_asset:
         raise AssetNotFoundError(f"Destination asset id '{new_dest_id}' doesn't exist")
@@ -133,8 +140,8 @@ def update_transfer(db: Session, transfer_id: int, update: TransferUpdate) -> Tr
     return transfer
 
 
-def delete_transfer(db: Session, transfer_id: int) -> Transfer:
-    transfer = get_transfer(db, transfer_id)
+def delete_transfer(db: Session, user_id: int, transfer_id: int) -> Transfer:
+    transfer = get_transfer(db, user_id, transfer_id)
 
     db.delete(transfer)
     db.commit()

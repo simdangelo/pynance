@@ -53,7 +53,7 @@ def client(db_session: Session) -> Generator[TestClient]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    test_client = TestClient(app)
+    test_client = TestClient(app, base_url="http://localhost")
     create_user(test_client)
     login(test_client)
     yield test_client
@@ -68,7 +68,7 @@ def anon_client(db_session: Session) -> Generator[TestClient]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    yield TestClient(app)
+    yield TestClient(app, base_url="http://localhost")
     app.dependency_overrides.clear()
 
 

@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_allowed_chat_id: int = 0
     access_session_expire_days: int = 30
+    allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
 
     @property
     def database_url(self) -> str:

@@ -70,7 +70,7 @@ def test_user_a_cannot_modify_user_b_category(client: TestClient) -> None:
     # `client` is pre-authenticated as a default user (user A)
     category = create_category(client, "groceries", "expense")
 
-    other = TestClient(client.app)
+    other = TestClient(client.app, base_url="http://localhost")
     other.post(
         "/api/auth/register",
         json={"email": "bob@example.com", "password": "password123"},

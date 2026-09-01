@@ -13,6 +13,7 @@ import type {
   TransferInput,
   TrendByCategory,
   TrendPoint,
+  User,
 } from "@/types/api"
 
 export class ApiError extends Error {
@@ -27,6 +28,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     ...init,
   })
   if (!response.ok) {
@@ -57,6 +59,20 @@ function toQueryString(params: Record<string, string | number | undefined>): str
 }
 
 export const api = {
+  auth: {
+    register: (data: { email: string; password: string }) =>
+      request<User>("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    login: (data: { email: string; password: string }) =>
+      request<User>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    logout: () => request<void>("/api/auth/logout", { method: "POST" }),
+    me: () => request<User>("/api/auth/me"),
+  },
   categories: {
     list: () => request<Category[]>("/api/categories"),
     create: (data: { name: string; transaction_type: string }) =>

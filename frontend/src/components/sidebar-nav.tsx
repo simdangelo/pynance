@@ -5,13 +5,16 @@ import {
   ArrowRightLeft,
   LayoutDashboard,
   Landmark,
+  LogOut,
   Repeat,
   Settings,
 } from "lucide-react"
 
+import { useAuth } from "@/lib/auth"
 import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 const NAV_ITEMS = [
   { to: "/overview", label: "Overview", icon: LayoutDashboard },
@@ -30,6 +33,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     queryKey: ["recurring"],
     queryFn: api.recurringTemplates.list,
   })
+  const { user, logout } = useAuth()
 
   const dueCount = (templates ?? []).filter((t) => t.active && t.due).length
 
@@ -89,6 +93,19 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             </NavLink>
           )
         })}
+        <div className="mt-3 border-t border-border pt-3">
+          <div className="flex items-center justify-between gap-2 px-3">
+            <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Log out"
+              onClick={() => void logout()}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
     </nav>
   )

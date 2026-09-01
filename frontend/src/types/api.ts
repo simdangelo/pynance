@@ -4,6 +4,11 @@ export type Frequency = "yearly" | "monthly" | "weekly" | "custom"
 
 export type AssetType = "liquid" | "savings" | "etf"
 
+export interface User {
+  id: number
+  email: string
+}
+
 export interface Category {
   id: number
   name: string

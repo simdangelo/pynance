@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import {
   ArrowLeftRight,
   ArrowRightLeft,
+  FileUp,
   LayoutDashboard,
   Landmark,
   LogOut,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
 ] as const
 
 const FOOTER_ITEMS = [
+  { to: "/import", label: "Import", icon: FileUp },
   { to: "/categories", label: "Categories", icon: Settings },
 ] as const
 

@@ -9,6 +9,24 @@ export interface User {
   email: string
 }
 
+export interface ImportResult {
+  categories_created: number
+  transactions_imported: number
+  skipped: number
+}
+
+export interface ImportPreviewRow {
+  description: string
+  occurred_on: string
+  transaction_type: TransactionType
+  category: string
+  amount: string
+}
+
+export interface ImportPreview {
+  rows: ImportPreviewRow[]
+}
+
 export interface Category {
   id: number
   name: string

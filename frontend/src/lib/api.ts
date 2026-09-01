@@ -3,6 +3,8 @@ import type {
   AssetInput,
   Category,
   Comparison,
+  ImportPreview,
+  ImportResult,
   NetWorthTrendPoint,
   RecurringTemplate,
   RecurringTemplateInput,
@@ -72,6 +74,26 @@ export const api = {
       }),
     logout: () => request<void>("/api/auth/logout", { method: "POST" }),
     me: () => request<User>("/api/auth/me"),
+  },
+  importData: {
+    upload: (file: File) => {
+      const formData = new FormData()
+      formData.append("file", file)
+      return request<ImportResult>("/api/import", {
+        method: "POST",
+        body: formData,
+        headers: {},
+      })
+    },
+    preview: (file: File) => {
+      const formData = new FormData()
+      formData.append("file", file)
+      return request<ImportPreview>("/api/import/preview", {
+        method: "POST",
+        body: formData,
+        headers: {},
+      })
+    },
   },
   categories: {
     list: () => request<Category[]>("/api/categories"),

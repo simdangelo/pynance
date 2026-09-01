@@ -10,6 +10,7 @@ import Recurring from "@/pages/recurring"
 import Assets from "@/pages/assets"
 import Transfers from "@/pages/transfers"
 import Categories from "@/pages/categories"
+import ImportData from "@/pages/import"
 
 function AppRoutes() {
   return (
@@ -24,6 +25,7 @@ function AppRoutes() {
         <Route path="/recurring" element={<Recurring />} />
         <Route path="/assets" element={<Assets />} />
         <Route path="/transfers" element={<Transfers />} />
+        <Route path="/import" element={<ImportData />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="*" element={<Navigate to="/overview" replace />} />
       </Route>

@@ -20,6 +20,8 @@ dependencies = [
     "python-telegram-bot>=22.8",
     "sqlalchemy>=2.0.51",
     "uvicorn>=0.52.4",
+    "openpyxl>=3.1.5",
+    "python-multipart>=0.0.32",
 ]
 
 [dependency-groups]
@@ -28,6 +30,7 @@ dev = [
     "pre-commit>=4.0",
     "pytest>=9.1.1",
     "ruff>=0.16.1",
+    "types-openpyxl>=3.1.5.20260827",
     "types-python-dateutil>=2.9.0.20260807",
 ]
 

@@ -356,7 +356,7 @@ existing data, take a backup. Always.**
 - An error could corrupt or delete data; the backup is the way back.
 - It lets you test the **downgrade** safely on real data.
 - In production, data is real users and not reconstructable — a scheduled
-  backup plus a pre-migration one is the minimum safe practice.
+  backup plus a pre-migration one is thdowe minimum safe practice.
 
 With Postgres, `pg_dump` produces a plain `.sql` file with everything needed
 to rebuild the database — schema and data:

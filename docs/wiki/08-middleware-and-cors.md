@@ -206,20 +206,43 @@ correctly so. Don't "simplify" it into global middleware.
 6. **Host header check has a dev gotcha** — the Vite proxy forwards the
    browser's Host (with port); TrustedHost strips ports, so list bare
    hostnames.
+7. **Uvicorn configures only its own loggers** — uvicorn's default logging
+   leaves the *root* logger at `WARNING` with no handler for app loggers, so
+   your `logger.info(...)` lines are **silently dropped**. Fix: give the
+   `pynance` logger its own `StreamHandler` and level (the `_setup_logging()`
+   helper in `main.py`), with `propagate = False` so lines print exactly once.
+8. **TestClient's default host is `testserver`** — `TrustedHostMiddleware`
+   rejects it with 400, breaking every test. Use
+   `TestClient(app, base_url="http://localhost")` in the test fixtures
+   (this is why `tests/conftest.py` and the hand-built `TestClient` in
+   `tests/test_auth.py` pass `base_url`).
+9. **A handler for base `Exception` lives in the *outermost* middleware** —
+   FastAPI/Starlette route the base-`Exception` handler to
+   `ServerErrorMiddleware`, *outside* your custom middleware. So a 500 still
+   reaches the client, but your middleware's "after `call_next`" code never
+   runs for it: no `X-Request-ID` header, no duration log line. Handle it in
+   both places — wrap `call_next` in `try/except` to log error + duration
+   inside the middleware, and set the `X-Request-ID` header on the
+   `JSONResponse` the exception handler returns.
 
 ---
 
 ## The exercise
 
-Add the three pieces to `backend/pynance/api/main.py`:
+This exercise was **completed as an unblock step** — the pieces live in
+`backend/pynance/api/main.py` (plus `allowed_hosts` in `backend/pynance/config.py`):
 
 1. `TrustedHostMiddleware` with `allowed_hosts` covering your dev setup
-   (`localhost`, `127.0.0.1`).
+   (`localhost`, `127.0.0.1`) — read from `Settings` so the real domain can
+   be added via `.env` at deploy time.
 2. A small `@app.middleware("http")` that:
    - generates an `X-Request-ID` (UUID) and sets it as a response header;
    - logs `method path -> status` plus the request id and duration;
    - uses Python's `logging` (a module-level `logger = logging.getLogger(__name__)`).
 3. Confirm in the dev terminal that requests now print a line per request.
+   If you *don't* see your app's log lines under uvicorn, it's pitfall #7
+   (uvicorn only configures its own loggers) — the `_setup_logging()` helper
+   fixes it.
 
 Tooling checkpoints (run from `backend/`):
 
@@ -240,7 +263,28 @@ middleware. If you find yourself adding either, stop and re-read this file.
 
 ## After you're done
 
-Write ADR 0006 recording the decision (once made): **no CORS middleware
-(single-origin by design); TrustedHostMiddleware + request logging with
-X-Request-ID as the hardening baseline.** Use the standard ADR template
-(Context, Decision, Alternatives considered, Consequences).
+**Done in this project** (unblock step). ADR 0006 records the decision:
+**no CORS middleware (single-origin by design); TrustedHostMiddleware +
+request logging with X-Request-ID as the hardening baseline.** See
+`docs/adr/0006-no-cors-trusted-host-and-request-logging.md`.
+
+The actual implementation went slightly beyond the exercise, and the extra
+pieces are worth knowing about:
+
+- **A health endpoint** (`GET /api/health` → `{"status": "ok"}`) — the
+  liveness check a reverse proxy or uptime monitor will hit. It's
+  unauthenticated by design (the proxy calls it, not a user).
+- **User context in the log line.** `get_current_user` sets
+  `request.state.user_id`; the middleware reads it after `call_next` and
+  logs `user_id=...`. Anonymous requests (login, register, health) log
+  `user_id=None`. This answers "who did it?" — the missing piece noted in
+  the observability analysis.
+- **Exception correlation.** `call_next` is wrapped in `try/except` so a 500
+  still produces a log line (with duration) inside the middleware, and an
+  `@app.exception_handler(Exception)` logs the full traceback with the same
+  `request_id` + `user_id` and returns a `500` JSON with the `X-Request-ID`
+  header — so even errors are traceable end to end.
+
+The two ERROR lines you'll see for one 500 (middleware + exception handler)
+are intentional: the first carries the duration, the second the traceback,
+and the shared `request_id` links them.

@@ -284,8 +284,16 @@ La seconda strada è quella coerente con il progetto, ed evita il CORS.
 deploy automatico a ogni push su GitHub; ottimo per validare l'idea in fretta.
 
 **Contro:** meno controllo; alcune configurazioni "magiche" restano oscure; il
-free tier è spesso limitato (il DB può "dormire" se inattivo); impari meno
-sistemistica.
+free tier è spesso limitato — il web service può "dormire" se inattivo
+(cold start alla prima richiesta dopo una pausa) e in alcuni casi il
+database gratuito **scade** dopo un periodo (es. 90 giorni su Render) o ha
+limiti di risorse. Si impari meno sistemistica.
+
+> **Le piattaforme cambiano spesso i free tier.** Contro e limiti scritti
+> qui sono una foto del momento: prima di scegliere, verifica le condizioni
+> correnti sulla pagina del provider. Il principio (free tier reale vs
+> credito una-tantum, DB gratis a scadenza vs permanente, cold start vs
+> sempre acceso) è stabile, i numeri specifici no.
 
 ### B — Frontend statico + Backend PaaS + DB managed (separati)
 

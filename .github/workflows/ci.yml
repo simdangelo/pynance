@@ -9,6 +9,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: app_user_password
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: pynance_test_db
+
     services:
       postgres:
         image: postgres:17

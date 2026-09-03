@@ -52,6 +52,14 @@ over time.
 
 6. Open http://localhost:5173 in your browser.
 
+## Production (PaaS)
+
+The backend image (`backend/Dockerfile`) is multi-stage and serves both the
+API and the built frontend (single origin). Deploy it to a PaaS like
+Railway: set `DATABASE_URL`, `SECURE_COOKIES=true` and `ALLOWED_HOSTS`
+(the platform domain) as environment variables. See
+`docs/wiki/10-deploy-paas-railway.md` for the step-by-step guide.
+
 ## Backend checks
 
 ```bash

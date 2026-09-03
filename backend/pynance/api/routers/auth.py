@@ -40,6 +40,7 @@ def login(user: UserLogin, response: Response, db: Annotated[Session, Depends(ge
         key=SESSION_COOKIE_NAME,
         value=session.token,
         httponly=True,
+        secure=settings.secure_cookies,
         max_age=settings.access_session_expire_days * 24 * 60 * 60,
         samesite="lax",
     )

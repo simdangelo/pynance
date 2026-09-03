@@ -13,6 +13,7 @@ from pynance.api.routers import (
     category,
     import_data,
     recurring_template,
+    static_assets,
     transaction,
     transfer,
 )
@@ -112,3 +113,6 @@ app.include_router(
 )
 app.include_router(asset.router, prefix="/api/assets", tags=["assets"])
 app.include_router(transfer.router, prefix="/api/transfers", tags=["transfers"])
+
+# Serve the built frontend (single origin) when present; a no-op in dev.
+app.include_router(static_assets.router)

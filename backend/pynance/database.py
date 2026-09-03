@@ -5,7 +5,7 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from pynance.config import settings
 
-engine = create_engine(settings.database_url)
+engine = create_engine(settings.resolved_database_url)
 
 SessionLocal = sessionmaker(autoflush=False, bind=engine, expire_on_commit=False)
 

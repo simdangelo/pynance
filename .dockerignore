@@ -1,0 +1,26 @@
+# VCS / caches
+.git
+.mypy_cache
+.ruff_cache
+__pycache__
+*.pyc
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Dev-only / local
+local/
+backend/.venv
+backend/tests
+frontend/node_modules
+
+# Build outputs (rebuilt inside the image)
+frontend/dist
+
+# Editor / OS noise
+.DS_Store
+.idea
+.vscode
+*.swp

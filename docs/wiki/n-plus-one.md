@@ -1,7 +1,6 @@
 # The N+1 Problem (and lazy loading in ORMs)
 
-A general guide to one of the classic ORM performance traps, triggered in this
-project by the derived `transaction_type` property (ADR 0003). Understanding it
+A general guide to one of the classic ORM performance traps. Understanding it
 matters because it's the most common way a clean-looking ORM model silently
 becomes slow as data grows.
 
@@ -37,17 +36,12 @@ object that's fine — one extra query is acceptable. For a *collection*, the
 cost multiplies per element. The feature is convenient and the cost is
 invisible until it isn't.
 
-## Where this project hit it
-
-`Transaction.transaction_type` is a `@property` that returns
-`self.category.transaction_type` (ADR 0003: the type is derived, not stored).
-Reading the property on one transaction lazy-loads its category. `list_transactions`
-returns many transactions — and serializing each one reads the property:
-**1 + N queries**. The `get_transactions` list endpoint and the transaction
-table in the frontend both trigger it.
-
-The property is the right *design* (one source of truth); the N+1 is a
-*loading strategy* issue, fixable without changing the design.
+A particularly sneaky trigger is a **derived property**: a `@property` on the
+model that returns `self.related.some_field`. Reading it looks like a plain
+attribute access, but it lazy-loads the relationship underneath. When a
+collection is serialized and each row's property is read, the cost is 1 + N
+queries hidden behind what appears to be a trivial read — the N+1 signature
+is invisible in a code review and only shows up in the query log.
 
 ## The fix: eager loading
 
@@ -76,8 +70,8 @@ When to use `selectinload` vs the other strategies:
 | `selectinload` | second query with `IN (...)`, loads all | **lists of objects with a relationship you'll read** |
 | `joinedload` | single query with `JOIN` | you always need the related data, small result sets |
 
-For our case, `selectinload` is the right default: it's flat-cost and doesn't
-complicate the query.
+For list endpoints that read a relationship, `selectinload` is the right
+default: it's flat-cost and doesn't complicate the query.
 
 ## How to know you have it (and that the fix worked)
 
@@ -93,9 +87,9 @@ complicate the query.
   If you see `for x in rows: x.related`, expect N+1 and eager-load.
 - **Eager load only what you read.** `selectinload` on a relationship you
   never touch is wasted work.
-- **Properties that reach into relationships** (like our `transaction_type`)
-  are sneaky: the N+1 is hidden behind an attribute read that looks like a
-  plain field. Code review can't see it; the query log can.
+- **Properties that reach into relationships** are sneaky: the N+1 is hidden
+  behind an attribute read that looks like a plain field. Code review can't
+  see it; the query log can.
 - **It's not premature optimization to fix N+1**: it's the difference between
   an endpoint that scales linearly and one that scales *quadratically* in
   queries. The code change is one line.

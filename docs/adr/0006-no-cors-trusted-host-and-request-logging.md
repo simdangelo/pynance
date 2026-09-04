@@ -74,7 +74,7 @@ Two facts shaped the decision:
   concern; the API contract is unchanged.
 
 ## References
-- Wiki: `docs/wiki/08-middleware-and-cors.md`
+- Wiki: `docs/wiki/middleware-http.md` e `docs/wiki/cors.md`
 - Builds on ADR 0005 (HttpOnly cookie sessions) — same-origin is what makes
   the cookie work without CORS.
 - The single-origin rationale is fixed in AGENTS.md, "Frontend ↔ Backend

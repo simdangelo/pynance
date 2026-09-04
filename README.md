@@ -1,70 +1,85 @@
 # Pynance
 
-A personal budget tracker. You can record income and expenses, manage your assets (bank,
-savings, ETFs), create recurring templates, move money between assets, and see your net worth
-over time.
+A personal budget tracker for people who want to know where their money
+actually goes. Record income and expenses, manage assets, and see your net
+worth over time, all in a self-hostable app you control.
 
 ## Stack
 
-- **Backend**: Python 3.14, FastAPI, SQLAlchemy 2, Alembic, PostgreSQL. Managed with `uv`.
-- **Frontend**: React 18 + TypeScript, Vite, Tailwind CSS, TanStack Query, React Router. Managed
-  with `npm`.
+- **Backend**: Python 3.14, FastAPI, SQLAlchemy 2, Alembic, PostgreSQL,
+  managed with `uv`.
+- **Frontend**: React + TypeScript, Vite, Tailwind CSS, TanStack Query,
+  React Router.
+- **Infra**: PostgreSQL in Docker; optional GitHub Actions CI; deployable
+  to any PaaS (Render) or a VPS.
 
 ## Requirements
 
-- [Docker](https://docs.docker.com/get-docker/) (PostgreSQL always runs in Docker — don't install
-  it on your machine)
-- [uv](https://docs.astral.sh/uv/)
-- Node.js and npm
+- [Docker](https://docs.docker.com/get-docker/): PostgreSQL always runs in
+  Docker; don't install it on your machine.
+- [uv](https://docs.astral.sh/uv/): Python package manager.
+- Node.js 20+ and npm for the frontend.
 
-## Run it locally
+## Quick start
 
-1. Clone the repo and go into the project folder.
+```bash
+# 1. Environment (fill in the values)
+cp .env.example .env
 
-2. Create your environment file and fill in the PostgreSQL values:
+# 2. Start the database
+docker compose up -d db
 
-   ```bash
-   cp .env.example .env
-   ```
+# 3. Backend (http://localhost:8000)
+cd backend
+uv sync
+uv run alembic upgrade head
+uv run uvicorn pynance.api.main:app --reload
 
-3. Start the database:
+# 4. Frontend (http://localhost:5173)
+cd ../frontend
+npm install
+npm run dev
+```
 
-   ```bash
-   docker compose up -d db
-   ```
+Open http://localhost:5173, register an account, and start recording.
 
-4. Set up and run the backend (port 8000):
+## Configuration
 
-   ```bash
-   cd backend
-   uv sync
-   uv run alembic upgrade head
-   uv run uvicorn pynance.api.main:app --reload
-   ```
+All configuration is via environment variables (see `.env.example`):
 
-5. In another terminal, run the frontend (port 5173):
+| Variable | Description |
+|---|---|
+| `POSTGRES_*` | Database connection parts for local development |
+| `DATABASE_URL` | Single connection string; wins over `POSTGRES_*` when set (used in production) |
+| `SECURE_COOKIES` | `true` in production (HTTPS) so the session cookie is `Secure` |
+| `ALLOWED_HOSTS` | JSON list of accepted Host headers (TrustedHostMiddleware) |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ALLOWED_CHAT_ID` | Optional Telegram bot |
 
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-6. Open http://localhost:5173 in your browser.
-
-## Production (PaaS)
-
-The backend image (`backend/Dockerfile`) is multi-stage and serves both the
-API and the built frontend (single origin). Deploy it to a PaaS like Render:
-set `DATABASE_URL`, `SECURE_COOKIES=true` and `ALLOWED_HOSTS`
-(the platform domain) as environment variables. See
-`docs/wiki/10-deploy-paas-render.md` for the step-by-step guide.
-
-## Backend checks
+## Tests & checks
 
 ```bash
 cd backend
-uv run pytest
-uv run ruff check .
-uv run mypy .
+uv run pytest        # tests against a real Postgres test database
+uv run ruff check .  # lint
+uv run mypy .        # type check
 ```
+
+The CI workflow (`.github/workflows/ci.yml`) runs all three on every push
+and pull request.
+
+## Deployment
+
+The backend image is multi-stage and serves both the API and the built
+frontend (single origin). Deploy it to any PaaS:
+
+1. Build the image: `docker build -f backend/Dockerfile .`
+2. Set `DATABASE_URL`, `SECURE_COOKIES=true`, and `ALLOWED_HOSTS` (your
+   domain) as environment variables.
+3. Push to your platform of choice. HTTPS is handled by the platform.
+
+The app runs migrations automatically on startup (`alembic upgrade head`),
+so a fresh database is set up without extra steps.
+
+## License
+
+Not yet licensed.

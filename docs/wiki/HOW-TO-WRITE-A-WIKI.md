@@ -1,9 +1,11 @@
-# Come scrivere una wiki (per gli agenti che scrivono le wiki di questo progetto)
+# Come scrivere una wiki (per gli agenti che scrivono i concetti di questo progetto)
 
-Questo file raccoglie le regole di stile e di formato per le wiki in
-`docs/wiki/`. È il riferimento da seguire ogni volta che si scrive o si
-riscrive una wiki. Se una regola qui dentro è ambigua, si torna a questo
-file come fonte di verità.
+Questo file raccoglie le regole di stile e di formato per i documenti di
+**concetto** in `docs/wiki/`. Ogni wiki insegna un concetto generale e
+estraibile: non racconta la storia di questo progetto (quella sta in
+`docs/journal/`, con le sue regole in `HOW-TO-WRITE-A-JOURNAL.md`), non
+registra decisioni formali (quelle stanno in `docs/adr/`). Se una regola qui
+dentro è ambigua, si torna a questo file come fonte di verità.
 
 ---
 
@@ -44,27 +46,26 @@ l'abbia "scorsa". Questo significa:
 ## È un documento estraibile
 
 La wiki insegna un concetto **generale**, valido al di fuori di questo
-progetto. Può fare riferimento al progetto come *esempio concreto* (e spesso
-è utile), ma il contenuto deve reggersi da solo: chi non conosce Pynance
-deve comunque imparare il concetto. Non si scrivono wiki "calate" su una
-sola situazione — le decisioni specifiche del progetto stanno negli ADR, i
-concetti stanno nelle wiki.
+progetto. Il contenuto deve reggersi da solo: chi non conosce Pynance deve
+comunque imparare il concetto. Non si scrivono wiki "calate" su una sola
+situazione. Le decisioni specifiche del progetto stanno negli ADR
+(`docs/adr/`), la storia sta nei journal (`docs/journal/`), i concetti stanno
+nelle wiki.
 
 ## Self-contained
 
 Una wiki deve essere leggibile da sola, senza dover aprire altri file.
-Quando rimanda altrove (un'altra wiki, un ADR, un modulo), lo fa per
-*approfondire*, non perché il contenuto manca. Regola pratica: se il
-riferimento è necessario per capire, va scritto nel testo; se è facoltativo,
-va linkato.
+Quando rimanda altrove (un'altra wiki, un ADR), lo fa per *approfondire*,
+non perché il contenuto manca. Regola pratica: se il riferimento è
+necessario per capire, va scritto nel testo; se è facoltativo, va linkato.
 
 ## Niente auto-citazioni e niente rinvii goffi
 
 Non riprendere tra virgolette una frase già scritta altrove nel testo ("come
 detto sopra, 'tutto dietro localhost'"). Se un concetto va detto, si dice
-nel punto giusto — una volta — nel modo naturale. I rinvii interni ("vedi
-Part 3") sono ammessi solo come indicazioni di percorso, mai come sostituti
-della spiegazione.
+nel punto giusto — una volta — nel modo naturale. I rinvii interni ("vedi la
+sezione sul reverse proxy") sono ammessi solo come indicazioni di percorso,
+mai come sostituti della spiegazione.
 
 ## Lingua
 
@@ -72,22 +73,21 @@ Le wiki si scrivono **in italiano**. I file scritti in inglese prima di
 questo cambio di regola non vanno riscritti per principio, ma ogni nuova
 wiki e ogni riscrittura sostanziosa sono in italiano.
 
-## La struttura tipica di una wiki-modulo
+## La struttura tipica di una wiki di concetto
 
-Una wiki che accompagna un modulo del roadmap ha di solito questa forma:
+Una wiki di concetto ha di solito questa forma:
 
-1. **Apertura** — che cosa fa il modulo, che cosa imparerai, perché serve.
-2. **Il concetto centrale** — spiegato dal generale al particolare.
-3. **Le decisioni e i trade-off** — le alternative, con i pro e i contro,
-   e la motivazione della scelta fatta.
-4. **Le insidie** — gli errori comuni, specialmente quelli scoperti
-   implementando davvero.
-5. **L'esercizio** — ciò che il lettore deve fare da solo, con checkpoint
-   di verifica concreti (comandi da eseguire, risultati attesi).
+1. **Apertura** — il concetto in una frase, perché esiste, quando ti serve.
+2. **Il concetto centrale** — spiegato dal generale al particolare, con
+   analogie integrate nel discorso.
+3. **I trade-off** — le alternative e quando scegliere l'una o l'altra.
+4. **Le insidie** — gli errori comuni, specialmente quelli scoperti usando
+   davvero il concetto.
 
 La struttura non è un copia-incolla obbligatorio: è una forma tipica. Ciò
 che non cambia mai sono il principio guida (testo scorrevole), i titoli
-significativi e la didattica.
+significativi e la didattica. **Non** si aggiungono esercizi con checkpoint
+del progetto: quella è materia del journal, che racconta cosa abbiamo fatto.
 
 ## Lunghezza
 
@@ -110,7 +110,7 @@ corretti, non copiati. La wiki non eredita le imprecisioni della fonte.
 - [ ] Ogni termine tecnico è spiegato alla prima occorrenza
 - [ ] Il lettore potrebbe rispiegare il concetto a qualcun altro dopo averla letta
 - [ ] È estraibile: regge da sola fuori da questo progetto
+- [ ] Non racconta la storia del progetto (quella va nel journal)
 - [ ] I fatti tecnici sono verificati, non copiati da una fonte
 - [ ] È in italiano
 - [ ] Non ci sono auto-citazioni o rinvii che sostituiscono le spiegazioni
-- [ ] Se è una wiki-modulo, ha un esercizio con checkpoint di verifica

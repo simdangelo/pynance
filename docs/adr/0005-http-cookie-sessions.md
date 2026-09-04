@@ -70,7 +70,7 @@ advantage does not apply.
   serving, so no CORS work needed).
 
 ## References
-- Wiki: `docs/wiki/07-auth.md`
+- Wiki: `docs/wiki/sessions-jwt-vs-cookies.md`
 - Reverses the implied single-user assumption from earlier modules; the
   deferred `owner_id` guidance in AGENTS.md is now realized.
 - Idioms adapted from the reference FastAPI tutorial at

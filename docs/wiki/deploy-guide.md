@@ -19,7 +19,7 @@ più semplice alla più da sistemista, con pro/contro e quando sceglierle, e
 infine un capitolo sulla sicurezza in produzione.
 
 > Il progetto ha già un deploy manuale completo su VPS, documentato in
-> `09-docker-deploy-and-readiness.md`. Quella wiki è l'approfondimento della
+> `../journal/09-docker-deploy-and-readiness.md`. Quella è l'approfondimento della
 > **strategia C** di questa guida: la mappa qui sotto ti dice dove si colloca
 > e quali alternative esistono.
 
@@ -352,7 +352,7 @@ configurazione (CORS, env vars in più posti) rispetto ad A.
 Questa è la strada che insegna davvero come funziona un deploy "vero": affitti
 un server Linux vuoto e ci metti tutto tu, senza piattaforme che fanno magie.
 È la strategia che il progetto ha già percorso per intero — vedi
-`09-docker-deploy-and-readiness.md` per il dettaglio completo. I passi
+`../journal/09-docker-deploy-and-readiness.md` per il dettaglio completo. I passi
 concettuali:
 
 1. Crei una VM (Ubuntu 24.04 LTS è una scelta sicura) e ti connetti via SSH.
@@ -472,7 +472,7 @@ intero.** È qui che impari davvero. Puoi tenerlo come ambiente parallelo su
 un sottodominio, senza sostituire subito la tappa 1.
 
 Il progetto Pynance ha percorso le tappe **in ordine inverso**: ha già la C
-completa (VPS + Docker + Caddy, in `09-docker-deploy-and-readiness.md`), ma
+completa (VPS + Docker + Caddy, in `../journal/09-docker-deploy-and-readiness.md`), ma
 chi l'ha scritta fatica ancora a comprenderla fino in fondo perché è il
 percorso più complesso. Il piano è quindi: **partire dalla A** per avere
 l'app online subito e assorbire i concetti (build, env vars, deploy,
@@ -610,7 +610,7 @@ ma questo è il momento di *iniziare bene*, non di fare tutto subito.
 
 ## Riferimenti in questo progetto
 
-- `09-docker-deploy-and-readiness.md` — la strategia C nel dettaglio.
+- `../journal/09-docker-deploy-and-readiness.md` — la strategia C nel dettaglio.
 - ADR 0005 — cookie di sessione HttpOnly (parte della difesa da XSS/CSRF).
 - ADR 0006 — single-origin e perché il CORS non serve.
 - ADR 0007 — l'architettura di deploy scelta nel progetto.

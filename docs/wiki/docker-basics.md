@@ -155,83 +155,48 @@ machinery is used to containerize the application itself for deployment.
 
 ---
 
-## Cheatsheet — Docker
+## The commands you'll actually use
 
-### Images
+Once the concepts are clear, the commands are just their mechanical
+expressions. The recurring ones cluster into a few groups.
 
-| Task | Command |
-| --- | --- |
-| Build an image from a `Dockerfile` | `docker build -t my-image .` |
-| List images | `docker images` |
-| Pull an image without building | `docker pull postgres:16` |
-| Remove an image | `docker rmi my-image` |
+**Working with images.** You build an image from a `Dockerfile` with
+`docker build -t my-image .` (the `-t` gives it a name), list what you have
+with `docker images`, and remove what you no longer need with
+`docker rmi my-image`.
 
-### Containers
+**Running containers.** `docker run` starts a container from an image; the
+flags you'll see constantly are `-d` (run in the background),
+`--name` (give it a name instead of a random one), `-p` (publish a port,
+e.g. `-p 8000:8000`), and `-v` (mount a named volume, e.g.
+`-v myvol:/data`). `docker ps` lists running containers and `docker ps -a`
+also shows stopped ones. Logs come from `docker logs my-container` (with
+`-f` to follow live). To inspect a running container you open a shell with
+`docker exec -it my-container sh`. `docker stop` pauses a container and
+`docker rm` removes a *stopped* one; `docker rm -f` stops and removes in one
+step. When you're accumulating cruft, `docker system prune` cleans unused
+resources (and `prune -a` removes more aggressively — read the output before
+confirming).
 
-| Task | Command |
-| --- | --- |
-| Run a container in the background | `docker run -d --name my-container my-image` |
-| Run a container with a published port | `docker run -d -p 8000:8000 my-image` |
-| Run a container with a named volume | `docker run -d -v myvol:/data my-image` |
-| List running containers | `docker ps` |
-| List all containers (incl. stopped) | `docker ps -a` |
-| See container logs | `docker logs my-container` |
-| Follow logs live | `docker logs -f my-container` |
-| Open a shell inside a running container | `docker exec -it my-container sh` |
-| Stop a container | `docker stop my-container` |
-| Start a stopped container | `docker start my-container` |
-| Remove a stopped container | `docker rm my-container` |
-| Stop and remove a container | `docker rm -f my-container` |
+**Volumes.** `docker volume ls` lists them, `docker volume create myvol`
+creates one explicitly (though `-v` in `run` creates it implicitly), and
+`docker volume rm` deletes it.
 
-### Volumes
+**Compose adds the orchestration layer.** `docker compose up` starts the
+stack with logs attached, `up -d` starts it in the background, and
+`up -d --build` rebuilds the images first. `docker compose ps` shows
+service status, `docker compose logs` (with `-f`) shows logs, and
+`docker compose config` validates the compose file. `docker compose down`
+stops the stack; `docker compose restart` restarts it.
 
-| Task | Command |
-| --- | --- |
-| List volumes | `docker volume ls` |
-| Create a volume | `docker volume create myvol` |
-| Remove a volume | `docker volume rm myvol` |
+Two compose details are worth internalizing because they decide whether your
+data survives:
 
-### General
-
-| Task | Command |
-| --- | --- |
-| Clean up unused resources | `docker system prune` |
-| Remove everything unused (careful) | `docker system prune -a` |
-
----
-
-## Cheatsheet — Docker Compose
-
-### Lifecycle
-
-| Task | Command |
-| --- | --- |
-| Start the stack (foreground, logs attached) | `docker compose up` |
-| Start the stack in the background | `docker compose up -d` |
-| Rebuild images and start | `docker compose up -d --build` |
-| Show status of services | `docker compose ps` |
-| Show logs of all services | `docker compose logs` |
-| Follow logs live | `docker compose logs -f` |
-| Stop and remove containers + network | `docker compose down` |
-| Stop and remove *everything* incl. volumes (data!) | `docker compose down -v` |
-| Restart services | `docker compose restart` |
-| Validate the config file | `docker compose config` |
-
-### Common flags
-
-| Flag | Meaning |
-| --- | --- |
-| `-d` | run in the background (detached) |
-| `--build` | rebuild images before starting |
-| `-f FILE` | use a specific compose file (default `docker-compose.yml`) |
-| `-v` | with `down`: also remove named volumes (deletes data) |
-
-### Gotchas on the cheatsheet
-
-- `docker compose down` stops the stack but **keeps volumes** — data survives.
-  Only `down -v` deletes volumes (and with them, your database). This is the
-  "I lost my data" trap.
-- `docker compose` (space, the modern v2 command) is the current form. The old
-  `docker-compose` (hyphen) binary is legacy — don't mix them.
-- Run compose commands from the directory containing `docker-compose.yml`, or
-  pass `-f path/to/docker-compose.yml`.
+- `docker compose down` stops containers and the network but **keeps named
+  volumes** — your data survives. Only `down -v` also removes volumes, and
+  with them your database. This is the classic "I lost my data" trap.
+- The modern command is `docker compose` (with a space, the v2 form). The
+  older `docker-compose` (hyphenated) is legacy and shouldn't be used in new
+  projects. Use `-f FILE` to point at a specific compose file when yours
+  isn't named `docker-compose.yml`, and run compose commands from the
+  directory that contains it.

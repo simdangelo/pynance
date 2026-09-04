@@ -1,8 +1,9 @@
 # Python Mastery Note — Generators and `yield`
 
-*Folded into Module 3 because FastAPI's dependency injection uses generator
-functions (`get_db` yields a session), and understanding generators demystifies
-why that pattern works.*
+*Generators are what make the database-session pattern of many web
+frameworks work: a function that `yield`s a session (e.g. `get_db`) is a
+generator, and understanding how `yield` works demystifies why that pattern
+functions.*
 
 ---
 

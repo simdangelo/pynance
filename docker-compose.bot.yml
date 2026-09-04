@@ -1,0 +1,21 @@
+# Deploy del bot Telegram su un VPS (es. Oracle Cloud Free Tier).
+# Riusa la stessa immagine del backend (contiene il codice del bot) e
+# sovrascrive il comando di avvio: al posto dell'app web, lancia il bot.
+#
+# Uso:
+#   docker compose -f docker-compose.bot.yml up -d --build
+#
+# Variabili richieste (dall'ambiente o da un file .env accanto a questo):
+#   DATABASE_URL     — connessione al database (per la strada A: la External URL del DB Render)
+#   TELEGRAM_BOT_TOKEN — il token del bot (rigenerato, non quello esposto)
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: pynance_bot
+    restart: always
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+    command: ["uv", "run", "python", "-m", "pynance.bot.main"]

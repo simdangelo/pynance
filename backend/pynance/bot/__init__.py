@@ -1,13 +1,8 @@
-from pynance.bot.handlers import (
-    balance,
-    expense,
-    income,
-    start,
-)
+from pynance.bot.handlers import balance, link, start, unlink
 
 __all__ = [
     "balance",
-    "expense",
-    "income",
+    "link",
     "start",
+    "unlink",
 ]

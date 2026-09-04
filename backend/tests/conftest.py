@@ -15,6 +15,7 @@ from pynance.models.asset import Asset
 from pynance.models.category import Category
 from pynance.models.recurring_template import RecurringTemplate
 from pynance.models.session import Session as UserSession
+from pynance.models.telegram_link import LinkCode, TelegramLink
 from pynance.models.transaction import Transaction
 from pynance.models.transfer import Transfer
 from pynance.models.user import User
@@ -36,6 +37,8 @@ def setup_database() -> Generator[None]:
 def db_session(setup_database: Generator[None]) -> Generator[Session]:
     session = TestingSessionLocal()
     session.execute(delete(UserSession))
+    session.execute(delete(LinkCode))
+    session.execute(delete(TelegramLink))
     session.execute(delete(Transfer))
     session.execute(delete(Transaction))
     session.execute(delete(RecurringTemplate))

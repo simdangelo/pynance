@@ -56,3 +56,23 @@ class DuplicateEmailError(Exception):
 
 class InvalidCredentialsError(Exception):
     pass
+
+
+class InvalidLinkCodeError(Exception):
+    pass
+
+
+class LinkCodeExpiredError(Exception):
+    pass
+
+
+class ChatAlreadyLinkedError(Exception):
+    pass
+
+
+class UserAlreadyLinkedError(Exception):
+    pass
+
+
+class NotLinkedError(Exception):
+    pass

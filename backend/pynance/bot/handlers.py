@@ -1,169 +1,89 @@
-import asyncio
-from datetime import date
-from decimal import Decimal, InvalidOperation
-
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from telegram import Update
+from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from pynance.config import settings
 from pynance.database import SessionLocal
-from pynance.models.asset import Asset
-from pynance.models.types import AssetType, TransactionType
-from pynance.models.user import User
-from pynance.schemas.transaction import TransactionCreate
 from pynance.services import asset as asset_service
-from pynance.services import category as category_service
-from pynance.services import transaction as transaction_service
+from pynance.services import telegram_link as telegram_link_service
 from pynance.services.exceptions import (
-    AssetNotFoundError,
-    CategoryNotFoundError,
+    ChatAlreadyLinkedError,
+    InvalidLinkCodeError,
+    LinkCodeExpiredError,
+    UserAlreadyLinkedError,
 )
 
-
-def _is_allowed(update: Update) -> bool:
-    chat_id = update.effective_chat.id if update.effective_chat else None
-    return chat_id == settings.telegram_allowed_chat_id
-
-
-def _default_user_id(session: Session) -> int:
-    """Return the first user's id (single-user bot)."""
-    user = session.execute(select(User).order_by(User.id)).scalars().first()
-    if user is None:
-        raise RuntimeError("No user exists")
-    return user.id
-
-
-def _default_asset_id(session: Session, user_id: int) -> int:
-    """Return the user's single Liquid asset's id, or the first liquid asset."""
-    liquid = (
-        session.execute(
-            select(Asset)
-            .where(Asset.asset_type == AssetType.LIQUID, Asset.user_id == user_id)
-            .order_by(Asset.id)
-        )
-        .scalars()
-        .first()
-    )
-    if liquid is None:
-        raise AssetNotFoundError("No Liquid asset exists")
-    return liquid.id
-
-
-def _resolve_category(session: Session, user_id: int, name: str) -> int:
-    """Match a category by exact name, then case-insensitive."""
-    categories = category_service.list_categories(session, user_id)
-    exact = next((c for c in categories if c.name == name), None)
-    if exact is not None:
-        return exact.id
-    lowered = next((c for c in categories if c.name.lower() == name.lower()), None)
-    if lowered is not None:
-        return lowered.id
-    names = ", ".join(sorted(c.name for c in categories))
-    raise CategoryNotFoundError(f"Unknown category '{name}'. Available: {names}")
-
-
-def _parse_amount(raw: str) -> Decimal:
-    return Decimal(raw.replace(",", ".")).quantize(Decimal("0.01"))
-
-
-def _log_transaction(session: Session, transaction_type: TransactionType, parts: list[str]) -> str:
-    if not parts:
-        raise ValueError("Usage: /<command> <amount> <category> [description]")
-    amount = _parse_amount(parts[0])
-    if amount <= 0:
-        raise ValueError("Amount must be positive")
-    if len(parts) < 2:
-        raise ValueError("Missing category")
-
-    user_id = _default_user_id(session)
-    category_id = _resolve_category(session, user_id, parts[1])
-    description = " ".join(parts[2:]) if len(parts) > 2 else parts[1]
-
-    transaction_service.create_transaction(
-        session,
-        user_id,
-        TransactionCreate(
-            amount=amount,
-            category_id=category_id,
-            asset_id=_default_asset_id(session, user_id),
-            description=description,
-            occurred_on=date.today(),
-        ),
-    )
-    return f"✓ Logged {transaction_type.value} {amount} in '{description}'"
+MAIN_KEYBOARD = ReplyKeyboardMarkup([["➕ Nuova spesa"]], resize_keyboard=True)
 
 
 async def _reply(update: Update, text: str) -> None:
-    message = update.message
-    if message is not None:
-        await message.reply_text(text)
+    if update.message is not None:
+        await update.message.reply_text(text, reply_markup=MAIN_KEYBOARD)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not _is_allowed(update):
-        return
-    await _reply(
-        update,
-        "Pynance bot — quick transaction logging.\n\n"
-        "Commands:\n"
-        "/expense <amount> <category> [description]\n"
-        "/income <amount> <category> [description]\n"
-        "/balance",
-    )
+    chat_id = update.effective_chat.id if update.effective_chat else 0
+    with SessionLocal() as session:
+        user_id = telegram_link_service.get_user_by_chat(session, str(chat_id))
+    if user_id is None:
+        await _reply(
+            update,
+            "Pynance bot.\n\n"
+            "Per collegare il tuo account: apri l'app, ottieni un codice e invialo "
+            "con /link <codice>.\n\n"
+            "Comandi:\n"
+            "/link <codice> — collega questa chat al tuo account\n"
+            "/unlink — scollega questa chat\n"
+            "/balance — saldo totale\n"
+            "/start — questo messaggio",
+        )
+    else:
+        await _reply(
+            update,
+            "Pynance bot — account collegato.\n\n"
+            "Tocca '➕ Nuova spesa' per registrare una spesa.\n"
+            "/balance — saldo totale\n"
+            "/unlink — scollega questa chat",
+        )
 
 
-async def expense(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not _is_allowed(update):
+async def link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat_id = update.effective_chat.id if update.effective_chat else 0
+    args = context.args or []
+    if len(args) != 1:
+        await _reply(update, "Uso: /link <codice>")
         return
+    code = args[0]
     try:
         with SessionLocal() as session:
-            reply = await asyncio.to_thread(
-                _log_transaction, session, TransactionType.EXPENSE, context.args or []
-            )
-    except (
-        ValueError,
-        CategoryNotFoundError,
-        AssetNotFoundError,
-        InvalidOperation,
-        RuntimeError,
-    ) as e:
-        reply = str(e)
-    await _reply(update, reply)
+            telegram_link_service.link_chat(session, code, str(chat_id))
+    except InvalidLinkCodeError:
+        await _reply(update, "Codice non valido o già usato.")
+    except LinkCodeExpiredError:
+        await _reply(update, "Codice scaduto. Ottienine uno nuovo dall'app.")
+    except ChatAlreadyLinkedError:
+        await _reply(update, "Questa chat è già collegata a un account.")
+    except UserAlreadyLinkedError:
+        await _reply(update, "Questo account è già collegato a un'altra chat.")
+    else:
+        await _reply(update, "✓ Account collegato! Tocca '➕ Nuova spesa' per iniziare.")
 
 
-async def income(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not _is_allowed(update):
-        return
-    try:
-        with SessionLocal() as session:
-            reply = await asyncio.to_thread(
-                _log_transaction, session, TransactionType.INCOME, context.args or []
-            )
-    except (
-        ValueError,
-        CategoryNotFoundError,
-        AssetNotFoundError,
-        InvalidOperation,
-        RuntimeError,
-    ) as e:
-        reply = str(e)
-    await _reply(update, reply)
+async def unlink(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat_id = update.effective_chat.id if update.effective_chat else 0
+    with SessionLocal() as session:
+        telegram_link_service.unlink_chat(session, str(chat_id))
+    await _reply(update, "Chat scollegata. Per ri-collegarla, usa /link <codice>.")
 
 
 async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not _is_allowed(update):
-        return
-    try:
-        with SessionLocal() as session:
-            user_id = _default_user_id(session)
-            balances = await asyncio.to_thread(asset_service.get_asset_balances, session, user_id)
-        if not balances:
-            reply = "No assets yet."
-        else:
-            total = sum(balances.values())
-            reply = f"Total balance: {total}"
-    except Exception as e:
-        reply = str(e)
-    await _reply(update, reply)
+    chat_id = update.effective_chat.id if update.effective_chat else 0
+    with SessionLocal() as session:
+        user_id = telegram_link_service.get_user_by_chat(session, str(chat_id))
+        if user_id is None:
+            await _reply(update, "Account non collegato. Usa /link <codice> per collegarlo.")
+            return
+        balances = asset_service.get_asset_balances(session, user_id)
+    if not balances:
+        await _reply(update, "Nessun asset disponibile.")
+    else:
+        total = sum(balances.values())
+        await _reply(update, f"Saldo totale: {total}€")

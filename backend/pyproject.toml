@@ -43,7 +43,7 @@ target-version = "py314"
 extend-exclude = ["alembic/versions/*.py"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "DTZ"]
 
 [tool.ruff.format]
 quote-style = "double"

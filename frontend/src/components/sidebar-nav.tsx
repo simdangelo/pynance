@@ -1,12 +1,12 @@
 import { NavLink } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import {
-  ArrowLeftRight,
   ArrowRightLeft,
   FileUp,
   LayoutDashboard,
   Landmark,
   LogOut,
+  Receipt,
   Repeat,
   Settings,
 } from "lucide-react"
@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button"
 
 const NAV_ITEMS = [
   { to: "/overview", label: "Overview", icon: LayoutDashboard },
-  { to: "/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { to: "/transactions", label: "Transactions", icon: Receipt },
   { to: "/recurring", label: "Recurring", icon: Repeat },
   { to: "/assets", label: "Assets", icon: Landmark },
   { to: "/transfers", label: "Transfers", icon: ArrowRightLeft },

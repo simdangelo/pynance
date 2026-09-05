@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { FileUp } from "lucide-react"
+import { FileUp, Upload } from "lucide-react"
 
 import { api } from "@/lib/api"
 import type { ImportPreviewRow, ImportResult } from "@/types/api"
@@ -61,6 +61,10 @@ export default function ImportData() {
     }
   }
 
+  const openFilePicker = () => {
+    fileInputRef.current?.click()
+  }
+
   const submit = () => {
     if (file) {
       importMutation.mutate(file)
@@ -84,22 +88,29 @@ export default function ImportData() {
               ref={fileInputRef}
               type="file"
               accept=".csv,.xlsx"
-              className="block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:bg-secondary file:px-4 file:py-2 file:text-sm file:font-medium"
+              className="hidden"
               onChange={onFileChange}
             />
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                onClick={submit}
-                disabled={!file || previewMutation.isPending || importMutation.isPending}
-              >
-                <FileUp className="mr-1 h-4 w-4" />
-                {importMutation.isPending ? "Importing…" : "Import"}
-              </Button>
-              {file && (
-                <span className="text-sm text-muted-foreground">{file.name}</span>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={openFilePicker}
+              className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-muted/30 px-6 py-10 text-center transition-colors hover:border-foreground/40 hover:bg-muted/50"
+            >
+              <span className="flex size-12 items-center justify-center rounded-full bg-secondary">
+                <Upload className="size-5 text-muted-foreground" />
+              </span>
+              <span className="text-sm font-medium text-foreground">
+                Choose a file
+              </span>
+              <span className="text-xs text-muted-foreground">
+                CSV or Excel (.csv, .xlsx)
+              </span>
+            </button>
+            {file && (
+              <p className="text-sm text-muted-foreground">
+                Selected: <span className="font-medium text-foreground">{file.name}</span>
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">
               Expected columns: <code>Details, Date, Type, Category, Amount (EUR)</code>.
               Type is <code>Income</code> or <code>Expenditure</code>.
@@ -119,9 +130,11 @@ export default function ImportData() {
       {preview && preview.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Preview — first {preview.length} rows</CardTitle>
+            <CardTitle className="text-base">
+              Preview — first {preview.length} rows
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -144,6 +157,16 @@ export default function ImportData() {
                 ))}
               </TableBody>
             </Table>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                onClick={submit}
+                disabled={importMutation.isPending}
+              >
+                <FileUp className="mr-1 h-4 w-4" />
+                {importMutation.isPending ? "Importing…" : "Import file"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

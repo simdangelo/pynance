@@ -49,7 +49,8 @@ export function Segmented({
               onChange?.(option.value)
             }}
             className={cn(
-              "font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
+              "font-medium cursor-pointer whitespace-nowrap text-muted-foreground transition-colors",
+              !active && "hover:text-foreground",
               size === "sm"
                 ? "rounded-full px-3 py-1 font-numeric text-xs"
                 : "rounded-md px-4 py-1.5 text-sm",

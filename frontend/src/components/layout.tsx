@@ -5,7 +5,6 @@ import { Euro, Menu, X } from "lucide-react"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Toaster } from "@/components/ui/sonner"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 function Logo() {
   return (
@@ -51,11 +50,7 @@ export function Layout() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside
-            className={cn(
-              "absolute top-0 bottom-0 left-0 w-64 bg-background shadow-lg",
-            )}
-          >
+          <aside className="absolute top-0 bottom-0 left-0 w-64 bg-background shadow-lg">
             <div className="flex h-14 items-center justify-between px-4">
               <Logo />
               <Button
@@ -78,6 +73,7 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
+
       <Toaster />
     </div>
   )

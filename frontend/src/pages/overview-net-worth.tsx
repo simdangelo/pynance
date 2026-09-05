@@ -189,7 +189,7 @@ export default function OverviewNetWorth() {
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Area
-                  type="monotone"
+                  type="linear"
                   dataKey="amount"
                   stroke={moodColor}
                   strokeWidth={2.5}

@@ -95,7 +95,7 @@ export default function OverviewCashFlow() {
       (trend ?? []).map((point) => ({
         month: `${point.year}-${String(point.month).padStart(2, "0")}`,
         income: Number(point.income),
-        expense: -Number(point.expense),
+        expense: Number(point.expense),
         net: Number(point.income) - Number(point.expense),
       })),
     [trend],
@@ -163,7 +163,7 @@ export default function OverviewCashFlow() {
     [trendData],
   )
   const rangeExpense = useMemo(
-    () => trendData.reduce((sum, row) => sum + Math.abs(row.expense), 0),
+    () => trendData.reduce((sum, row) => sum + row.expense, 0),
     [trendData],
   )
 
@@ -240,7 +240,7 @@ export default function OverviewCashFlow() {
                     axisLine={false}
                     tick={{ className: "font-numeric text-xs" }}
                   />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+<ChartTooltip content={<ChartTooltipContent />} />
                   <ChartLegend content={<ChartLegendContent />} />
                   {activeMonth && (
                     <ReferenceLine
@@ -250,7 +250,7 @@ export default function OverviewCashFlow() {
                     />
                   )}
                   <Area
-                    type="monotone"
+                    type="linear"
                     dataKey="income"
                     stroke="var(--color-income, #1E8E55)"
                     fill="transparent"
@@ -259,7 +259,7 @@ export default function OverviewCashFlow() {
                     isAnimationActive={false}
                   />
                   <Area
-                    type="monotone"
+                    type="linear"
                     dataKey="expense"
                     stroke="var(--color-expense, #D6403A)"
                     fill="transparent"
@@ -268,11 +268,12 @@ export default function OverviewCashFlow() {
                     isAnimationActive={false}
                   />
                   <Area
-                    type="monotone"
+                    type="linear"
                     dataKey="net"
-                    stroke="var(--color-net, #2F5D66)"
+                    stroke="var(--color-petrol)"
                     fill="transparent"
                     strokeWidth={2.5}
+                    strokeDasharray="5 4"
                     dot={false}
                     activeDot={{ r: 4 }}
                     isAnimationActive={false}
@@ -346,7 +347,17 @@ export default function OverviewCashFlow() {
                     />
                   )}
                 />
-                <ChartTooltip content={<ChartTooltipContent />} />
+<ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => {
+                          const num = Number(value)
+                          const formatted = Number.isFinite(num) ? num.toFixed(2) : String(value)
+                          return [formatted, undefined]
+                        }}
+                      />
+                    }
+                  />
                 <Bar
                   dataKey="amount"
                   fill="var(--color-clay)"

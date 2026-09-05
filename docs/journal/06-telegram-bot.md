@@ -149,14 +149,82 @@ utente. Vedi `07-auth.md` per la storia di quel modulo.
 
 ## Cosa è rimasto aperto
 
-- **Il collegamento bot ↔ utente.** Oggi il bot è single-user e usa il
-  primo utente del database come default (e il `chat_id` come filtro). Con
-  gli account reali va deciso come il bot si aggancia a un utente specifico:
-  login/sessione dedicata o associazione esplicita chat→account. È
-  l'item rimasto aperto registrato in `07-auth.md`.
 - **Il bot non è in produzione.** Al deploy (modulo 10) il bot è rimasto
   fuori: un processo a long-polling non è il fit naturale di un web service
   HTTP. Vedere `10-deploy-paas-render.md` per la decisione.
 - **Scope v1 limitato.** Niente trasferimenti, ricorrenti, modifica o
   cancellazione via bot — decisione esplicita nel ROADMAP, da rivisitare se
   il bot diventa un client serio.
+
+## L'evoluzione del bot (dopo l'auth)
+
+Il bot descritto sopra è la versione **single-user** (comandi a riga
+singola, `_is_allowed`, `_default_user_id`). Con l'arrivo degli account
+(modulo 7) e la volontà di usarlo dal telefono, il bot è stato rifatto per
+essere **multi-utente e conversazionale**. Le decisioni sono in
+`../adr/0008-telegram-per-user-linking.md` e la wiki di concetto in
+`../wiki/linking-external-account.md`; qui la storia.
+
+### La decisione: collegamento per-user via link code
+
+Il bot doveva sapere *di chi* è una transazione. La strada scelta: un
+**collegamento permanente chat → account**, creato con un **codice
+una-tantum** (l'utente lo ottiene dall'app, lo invia al bot con `/link`).
+Due tabelle nuove: `telegram_links` (chat_id → user_id, UNIQUE su entrambi)
+e `link_codes` (codici con scadenza e consumo singolo). Il collegamento non
+scade: si stacca solo con `/unlink`. Questo risponde al bisogno reale —
+"registro la spesa dal telefono senza aprire il PC" — perché il codice si
+usa **una sola volta**, poi la sessione resta aperta per sempre.
+
+Si è scartata l'auto-associazione della prima chat all'unico utente
+(tentazione per il caso single-user): sarebbe stata insicura appena un
+secondo account esistesse.
+
+### Il flusso conversazionale (addio ai comandi a riga singola)
+
+L'utente non scrive più `/expense 50.0 spesa`. Tocca il pulsante fisso
+`➕ Nuova spesa` e il bot lo guida a passi con `ConversationHandler`:
+
+```
+➕ Nuova spesa → categoria (pulsanti, 8 per pagina, ◀️▶️)
+              → importo (testo validato, accetta virgola e punto)
+              → descrizione (obbligatoria)
+              → riepilogo con ✓ Conferma / ✗ Annulla
+```
+
+Scelte deliberate: **single-select** per la categoria (una spesa = una
+categoria, niente digitazione), **importo a testo libero** (niente pulsanti
+per un valore imprevedibile), **descrizione obbligatoria** (contesto utile
+dopo), **riepilogo con conferma** (correggere prima che entri nel DB).
+Il flusso gestisce `/cancel`, timeout di 5 minuti, e le chat non collegate.
+
+### Il tentativo di deploy su Oracle Cloud Free Tier (abbandonato)
+
+Il bot doveva girare in produzione. Render non offre un **worker free**
+(i background worker partono da $7/mese), e il webhook dentro il web
+service free avrebbe sofferto il cold start (i messaggi si perdono mentre
+l'app dorme). Restava il **long-polling su un VPS gratuito**: Oracle Cloud
+Free Tier.
+
+Abbiamo creato la VM (AMD Micro `E2.1.Micro`, 1 OCPU / **1 GB RAM**),
+configurato VCN + subnet pubblica + Internet Gateway, installato `uv`
+(funziona) — e lì siamo andati a sbattere contro un limite fisico: **`dnf`
+(il package manager) satura la RAM della micro**. Ogni `dnf install` manda
+il sistema in memory pressure: `Killed` dal killer OOM, e la sessione SSH
+che cade a ogni tentativo. Docker (che si installa via dnf) è risultato
+semplicemente troppo per 1 GB.
+
+**La lezione registrata**: la micro AMD da 1 GB non regge `dnf` per
+installare Docker. Le strade per riprovare, quando avremo tempo, sono tre:
+aggiungere uno **swapfile** prima di dnf; usare una **shape ARM A1.Flex con
+più RAM** (dentro il free tier); oppure **abbandonare Docker** e far girare
+il bot con Python + uv direttamente (il bot è un singolo processo, non ha
+bisogno di un container).
+
+### La decisione finale (per ora)
+
+Il deploy del bot è **rimandato**: finché l'app resta su Render, il bot non
+gira in produzione. Lo faremo funzionare quando passeremo alla **soluzione
+custom** (VPS con risorse adeguate), riprendendo da qui — VM Oracle e VCN
+sono già create, il `docker-compose.bot.yml` per il deploy è nel repo, e il
+problema RAM è compreso.

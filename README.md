@@ -53,7 +53,7 @@ All configuration is via environment variables (see `.env.example`):
 | `DATABASE_URL` | Single connection string; wins over `POSTGRES_*` when set (used in production) |
 | `SECURE_COOKIES` | `true` in production (HTTPS) so the session cookie is `Secure` |
 | `ALLOWED_HOSTS` | JSON list of accepted Host headers (TrustedHostMiddleware) |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ALLOWED_CHAT_ID` | Optional Telegram bot |
+| `TELEGRAM_BOT_TOKEN` | Token of the optional Telegram bot |
 
 ## Tests & checks
 
@@ -66,6 +66,51 @@ uv run mypy .        # type check
 
 The CI workflow (`.github/workflows/ci.yml`) runs all three on every push
 and pull request.
+
+## Telegram bot
+
+The bot lets you log an expense from your phone without opening the app.
+It runs as a separate long-polling process; start it from `backend/`:
+
+```bash
+uv run python -m pynance.bot.main
+```
+
+### First-time setup: link your chat to your account
+
+The bot doesn't know who you are until you link it. This is a **one-time**
+step:
+
+1. Open the web app (http://localhost:5173) and log in.
+2. In the browser console (`F12`), request a link code:
+   ```js
+   fetch('/api/telegram/link-code', { method: 'POST' }).then(r => r.json()).then(d => prompt('Codice:', d.code))
+   ```
+3. Send the code to the bot: `/link <code>`.
+4. The bot replies `✓ Account collegato`.
+
+**About the code:** it's single-use and expires after ~10 minutes. Every
+time you request one you get a *different* code — that's normal. But the
+code only matters for the one-time linking; once the chat is linked, it
+stays linked forever (until you `/unlink`). New codes after linking are
+irrelevant.
+
+### Recording an expense
+
+1. Tap the **`➕ Nuova spesa`** button in the chat.
+2. Pick a category (tap one of the buttons).
+3. Enter the amount (e.g. `12.50`).
+4. Enter a description (required).
+5. Confirm the summary with **✓ Conferma**.
+
+### Commands
+
+| Command | What it does |
+|---|---|
+| `/link <code>` | Link this chat to your account (once) |
+| `/unlink` | Unlink this chat |
+| `/balance` | Show your total balance |
+| `/start` | Show the welcome message and the `➕` button |
 
 ## Deployment
 

@@ -105,11 +105,22 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
       queryClient.invalidateQueries()
       onOpenChange(false)
     },
-    onError: () => toast.error("Failed to save transaction"),
+    onError: (error: Error) => toast.error(error.message || "Failed to save transaction"),
   })
+
+  const [formError, setFormError] = useState("")
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!categoryId) {
+      setFormError("Select a category first")
+      return
+    }
+    if (!assetId) {
+      setFormError("Select an asset first")
+      return
+    }
+    setFormError("")
     mutation.mutate({
       amount,
       category_id: Number(categoryId),
@@ -138,61 +149,72 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
           {/* Category */}
           <div className="space-y-1.5">
             <Label>Category</Label>
-            <Select
-              value={categoryId}
-              onValueChange={(v) => {
-                if (v) {
-                  setCategoryId(v)
-                  categoryByType.current[type] = Number(v)
-                }
-              }}
-              required
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue>
-                  {selectedCategory ? selectedCategory.name : "Select a category"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {filteredCategories.map((category) => (
-                  <SelectItem key={category.id} value={String(category.id)}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {filteredCategories.length === 0 ? (
+              <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
+                No {income ? "income" : "expense"} categories yet. Create one in the
+                Categories page first.
+              </div>
+            ) : (
+              <Select
+                value={categoryId}
+                onValueChange={(v) => {
+                  if (v) {
+                    setCategoryId(v)
+                    categoryByType.current[type] = Number(v)
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {selectedCategory ? selectedCategory.name : "Select a category"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredCategories.map((category) => (
+                    <SelectItem key={category.id} value={String(category.id)}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Asset */}
           <div className="space-y-1.5">
             <Label>Asset</Label>
-            <Select
-              value={assetId}
-              onValueChange={(v) => {
-                if (v) setAssetId(v)
-              }}
-              required
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue>
-                  {selectedAsset ? (
-                    <span className="flex items-center gap-2">
-                      <Landmark className="size-4 text-muted-foreground" />
-                      {selectedAsset.name}
-                    </span>
-                  ) : (
-                    "Select an asset"
-                  )}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {assets?.map((asset) => (
-                  <SelectItem key={asset.id} value={String(asset.id)}>
-                    {asset.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {assets && assets.length === 0 ? (
+              <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
+                No assets yet. Create one in the Assets page first.
+              </div>
+            ) : (
+              <Select
+                value={assetId}
+                onValueChange={(v) => {
+                  if (v) setAssetId(v)
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {selectedAsset ? (
+                      <span className="flex items-center gap-2">
+                        <Landmark className="size-4 text-muted-foreground" />
+                        {selectedAsset.name}
+                      </span>
+                    ) : (
+                      "Select an asset"
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {assets?.map((asset) => (
+                    <SelectItem key={asset.id} value={String(asset.id)}>
+                      {asset.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Amount */}
@@ -258,6 +280,12 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
               )}
             />
           </div>
+
+          {formError && (
+            <div className="rounded-lg border border-clay/30 bg-clay/10 px-3.5 py-2.5 text-sm text-clay">
+              {formError}
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

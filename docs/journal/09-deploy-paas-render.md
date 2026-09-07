@@ -1,8 +1,8 @@
-# Journal 10 — Deploy con la strategia A: Render in pratica
+# Journal 9 — Il primo deploy: Render in pratica
 
-Questo journal racconta il deploy dell'app su **Render** (strategia A della
-guida). Non spiega i concetti generali — CORS, multi-stage, env vars, ecc.
-stanno nella wiki `../wiki/deploy-guide.md` — ma *che cosa abbiamo fatto
+Questo journal racconta il primo deploy dell'app su **Render** (strategia A
+della guida). Non spiega i concetti generali — CORS, multi-stage, env vars,
+ecc. stanno nella wiki `../wiki/deploy-guide.md` — ma *che cosa abbiamo fatto
 in questo modulo*, file per file, quali insidie abbiamo incontrato e come le
 abbiamo risolte. Se non hai letto la guida, leggila prima: il journal è il
 racconto dell'applicazione, non la teoria.
@@ -11,27 +11,28 @@ racconto dell'applicazione, non la teoria.
 
 ## Il contesto: cosa siamo andati a fare
 
-Al termine del modulo 9 l'app girava solo su `localhost`. Avevamo già
-esplorato la **strategia C** (deploy manuale su VPS, documentata in
-`09-docker-deploy-and-readiness.md`) ma avevamo deciso di non usarla per il
-primo deploy reale: troppo lavoro di sistemista per chi sta imparando. La
-guida consiglia di partire dalla **A** (PaaS "tutto in uno") per andare
-online in fretta, e di rifare la C in un secondo momento.
+Fino a qui Pynance girava solo su `localhost` (Postgres in un container,
+backend su `:8000`, frontend su `:5173`). Il primo deploy reale è il passo
+naturale dopo i moduli di sviluppo: l'app esiste, ha autenticazione, import,
+reports — ora va messa online.
 
-La scelta è caduta su **Render** e non su Railway (l'altra candidata) per un
-motivo preciso: al momento della scelta Render ha un **free tier reale**
-(web service gratuito, nessuna carta di credito), mentre Railway offre un
-credito una-tantum che si esaurisce. Il prezzo è il **cold start**: dopo un
-periodo di inattività il servizio si "addormenta" e la prima richiesta dopo
-la pausa impiega ~50 secondi. Compromesso accettato per un'app personale a
-zero spese.
+La guida consiglia di partire dalla **strategia A** (PaaS "tutto in uno")
+per andare online in fretta, senza diventare sistemisti: la piattaforma
+gestisce server, rete e HTTPS, e noi restiamo concentrati sull'app. La scelta
+è caduta su **Render** e non su Railway (l'altra candidata) per un motivo
+preciso: al momento della scelta Render ha un **free tier reale** (web
+service gratuito, nessuna carta di credito), mentre Railway offre un credito
+una-tantum che si esaurisce. Il prezzo è il **cold start**: dopo un periodo
+di inattività il servizio si "addormenta" e la prima richiesta dopo la pausa
+impiega ~50 secondi. Compromesso accettato per un'app personale a zero spese.
 
 **Un avvertimento sulla gratuità del database**: il Postgres free di Render
 è gratis solo per 90 giorni, poi o si paga o non è più disponibile. L'abbiamo
-accettato per il primo deploy; la soluzione futura è spostarsi su un Postgres
-serverless con piano gratuito permanente (Neon o Supabase) cambiando solo la
-`DATABASE_URL`. Il codice non cambia — è proprio il vantaggio di leggere la
-connessione da una singola variabile.
+accettato per questo primo deploy; quando il conto alla rovescia si
+avvicinerà, la soluzione sarà spostare tutto su un VPS con il database
+accanto all'app — è il percorso che il journal 10 racconta. Il codice non
+cambia: è proprio il vantaggio di leggere la connessione da una singola
+variabile `DATABASE_URL`.
 
 ---
 
@@ -41,26 +42,24 @@ connessione da una singola variabile.
   separati che la strategia A descrive (frontend statico + backend, che
   reintroduce il CORS), il backend serve sia le API sia i file del frontend
   compilato. Così su Render c'è un solo web service e zero CORS da
-  configurare. È la stessa forma della strategia C, già decisa in ADR 0006
-  (single-origin) e ADR 0007 (l'immagine che contiene tutto).
-- **Build con Dockerfile, non con la build automatica.** Render può
-  buildare anche da solo (Nixpacks), ma abbiamo scelto il Dockerfile: è
-  esplicito, ci dà controllo, ed è l'infrastruttura condivisa che servirà
-  anche per la strategia C in futuro.
+  configurare. È la forma single-origin decisa in ADR 0006, e che resterà
+  anche nel deploy completo.
+- **Build con Dockerfile, non con la build automatica.** Render può buildare
+  anche da solo (Nixpacks), ma abbiamo scelto il Dockerfile: è esplicito, ci
+  dà controllo, ed è la stessa immagine che userà anche il deploy completo
+  sul VPS.
 - **Cookie `Secure` e host allow-list abilitati in prod.** `SECURE_COOKIES`
   e `ALLOWED_HOSTS` sono i due knob che in produzione si accendono (ADR
   0005 e ADR 0006).
 - **Primo deploy senza bot Telegram.** Il bot è un processo a long-polling
-  che non è il fit naturale di un web service HTTP; lo aggiungeremo dopo, se
-  decideremo di volerlo in prod.
+  che non è il fit naturale di un web service HTTP; lo aggiungeremo nel
+  deploy completo.
 
 ---
 
 ## Le modifiche al codice, file per file
 
-Partiti dalla branch `deploy` (un ramo pulito senza il lavoro di
-containerizzazione del modulo 9, per re-imparare il percorso da zero). I file
-toccati:
+I file toccati:
 
 ### `backend/pynance/config.py` — la `DATABASE_URL`
 
@@ -128,7 +127,7 @@ Nota: il build context è la **root del repo** (copiamo sia `frontend/` sia
 ### `backend/entrypoint.sh` — nuovo
 
 Esegue `alembic upgrade head` (schema prima del codice, come da guida) poi
-lancia uvicorn su `--port "${PORT:-8000}"`. Due differenze rispetto alla C:
+lancia uvicorn su `--port "${PORT:-8000}"`. Due dettagli:
 
 - La porta è `${PORT:-8000}`: Render inietta la porta da usare in `$PORT`.
 - `--proxy-headers` resta (il proxy di Render è davanti), ma niente
@@ -206,12 +205,10 @@ deploy nel README.
 
 ## Cosa è rimasto aperto
 
-- **Il database free scade dopo 90 giorni**: prima della scadenza bisogna
-  spostarsi su Neon/Supabase cambiando solo `DATABASE_URL` (codice
-  invariato).
-- **Il bot Telegram** non è in prod: decidere se e come aggiungerlo (è un
-  processo long-polling, non un web service HTTP).
-- **I moduli misti (01, 02, 03, 07, 08)** sono ancora in `docs/wiki/` senza
-  lo split concetto/storia: li spezzeremo quando li toccheremo di nuovo.
+- **Il database free scade dopo 90 giorni**: il conto alla rovescia è
+  partito. La soluzione è il deploy completo su VPS del journal 10, dove il
+  Postgres vive accanto all'app sullo stesso server.
+- **Il bot Telegram** non è in prod: è un processo long-polling, non un web
+  service HTTP. Lo porteremo online nel deploy completo.
 - **Il cold start di Render** (~50s dopo l'inattività) resta: è il prezzo
-  del free tier, da rivalutare se l'app diventa "da mostrare".
+  del free tier. Sul VPS sempre acceso sparisce.

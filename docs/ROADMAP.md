@@ -138,13 +138,16 @@ one by one.
 **Design decisions (made):**
 - **Single origin**: the backend image serves both the API and the built
   frontend (ADR 0007). One service, one URL, no CORS.
-- **PaaS (Render)**: free tier, HTTPS automatic. See ADR 0007 and the
-  deploy journal.
-- **CI via GitHub Actions** (ruff, mypy, pytest) on every push; **CD via
-  the platform** on push to `main`.
+- **First deploy on PaaS (Render)**: free tier, HTTPS automatic — the fast
+  path to get online (journal 09).
+- **Full deploy on a VPS (Oracle ARM, free tier)**: Docker Compose stack
+  (Caddy + backend + bot + Postgres) behind a real domain with automatic
+  Let's Encrypt TLS (ADR 0007, journal 10). Includes the Telegram bot and a
+  daily `pg_dump` backup.
+- **CI via GitHub Actions** (ruff, mypy, pytest) on every push.
 
-**Open items:** the Render free Postgres expires after 90 days — move to a
-permanent free Postgres (Neon/Supabase) by changing `DATABASE_URL` only.
+**Open items:** monitor the Oracle free tier (resources were halved in June
+2026 — if they no longer fit, migrate to a paid VPS with the same config).
 
 ---
 
@@ -152,7 +155,7 @@ permanent free Postgres (Neon/Supabase) by changing `DATABASE_URL` only.
 
 | Feature | Why deferred | When it might return |
 |---|---|---|
-| **Telegram bot in production** | Not part of the first deploy (long-polling process doesn't fit a plain web service) | After the multi-user bot (step 6) and a decision on how to run it in prod |
+| **Telegram bot in production** | Not part of the first deploy (long-polling process doesn't fit a plain web service) | Deployed with the full VPS deploy (journal 10) |
 | **Budgets** (planned vs actual per category) | User doesn't budget currently | If budgeting becomes a need; slots on top of `summary-by-category` |
 | **Forecasting / projections** | Needs budgets + recurring + assets | After 1–8 above |
 | **Interest rates on assets** | The app records what *is*, it doesn't simulate what *will be*; banks compute balances | "Advanced" section; a rate field + an accrual generator |

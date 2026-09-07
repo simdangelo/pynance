@@ -149,9 +149,10 @@ utente. Vedi `07-auth.md` per la storia di quel modulo.
 
 ## Cosa è rimasto aperto
 
-- **Il bot non è in produzione.** Al deploy (modulo 10) il bot è rimasto
-  fuori: un processo a long-polling non è il fit naturale di un web service
-  HTTP. Vedere `10-deploy-paas-render.md` per la decisione.
+- **Il bot non è in produzione.** Al primo deploy (modulo 9, Render) il bot è
+  rimasto fuori: un processo a long-polling non è il fit naturale di un web
+  service HTTP. Vedere `09-deploy-paas-render.md` per la decisione; il deploy
+  completo su VPS (journal 10) lo porta online.
 - **Scope v1 limitato.** Niente trasferimenti, ricorrenti, modifica o
   cancellazione via bot — decisione esplicita nel ROADMAP, da rivisitare se
   il bot diventa un client serio.
@@ -225,6 +226,5 @@ bisogno di un container).
 
 Il deploy del bot è **rimandato**: finché l'app resta su Render, il bot non
 gira in produzione. Lo faremo funzionare quando passeremo alla **soluzione
-custom** (VPS con risorse adeguate), riprendendo da qui — VM Oracle e VCN
-sono già create, il `docker-compose.bot.yml` per il deploy è nel repo, e il
-problema RAM è compreso.
+custom** (VPS con risorse adeguate): il `docker-compose.bot.yml` per il
+deploy è nel repo e il problema RAM è compreso — è il percorso del journal 10.

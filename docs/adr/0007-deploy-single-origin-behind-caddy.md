@@ -90,6 +90,6 @@ not the app.
   calls out.
 
 ## References
-- Wiki: `docs/wiki/deploy-guide.md`; Journal: `docs/journal/09-docker-deploy-and-readiness.md`
+- Wiki: `docs/wiki/deploy-guide.md`; Journal: `docs/journal/10-docker-deploy-and-readiness.md`
 - Builds on ADR 0005 (cookie sessions), ADR 0006 (no CORS; proxy takes
   headers/IP trust), and the single-origin rule in AGENTS.md.

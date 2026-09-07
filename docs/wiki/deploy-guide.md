@@ -18,10 +18,10 @@ una variazione sullo stesso tema), poi presenta le strategie concrete dalla
 più semplice alla più da sistemista, con pro/contro e quando sceglierle, e
 infine un capitolo sulla sicurezza in produzione.
 
-> Il progetto ha già un deploy manuale completo su VPS, documentato in
-> `../journal/09-docker-deploy-and-readiness.md`. Quella è l'approfondimento della
-> **strategia C** di questa guida: la mappa qui sotto ti dice dove si colloca
-> e quali alternative esistono.
+> Il deploy completo del progetto su VPS è documentato in
+> `../journal/10-docker-deploy-and-readiness.md`. Quella è l'approfondimento
+> della **strategia C** di questa guida: la mappa qui sotto ti dice dove si
+> colloca e quali alternative esistono.
 
 ---
 
@@ -351,8 +351,8 @@ configurazione (CORS, env vars in più posti) rispetto ad A.
 
 Questa è la strada che insegna davvero come funziona un deploy "vero": affitti
 un server Linux vuoto e ci metti tutto tu, senza piattaforme che fanno magie.
-È la strategia che il progetto ha già percorso per intero — vedi
-`../journal/09-docker-deploy-and-readiness.md` per il dettaglio completo. I passi
+È la strategia che il progetto percorre per il deploy completo — vedi
+`../journal/10-docker-deploy-and-readiness.md` per il dettaglio. I passi
 concettuali:
 
 1. Crei una VM (Ubuntu 24.04 LTS è una scelta sicura) e ti connetti via SSH.
@@ -471,15 +471,13 @@ il 90% del lavoro sporco.
 intero.** È qui che impari davvero. Puoi tenerlo come ambiente parallelo su
 un sottodominio, senza sostituire subito la tappa 1.
 
-Il progetto Pynance ha percorso le tappe **in ordine inverso**: ha già la C
-completa (VPS + Docker + Caddy, in `../journal/09-docker-deploy-and-readiness.md`), ma
-chi l'ha scritta fatica ancora a comprenderla fino in fondo perché è il
-percorso più complesso. Il piano è quindi: **partire dalla A** per avere
-l'app online subito e assorbire i concetti (build, env vars, deploy,
-migrazioni) su una piattaforma che fa il lavoro sporco, e **rifare la C in un
-weekend libero** — quando i concetti della A saranno chiari, la C sarà molto
-più semplice da digerire. Le conoscenze della C restano comunque quelle che
-permettono di capire cosa fanno A e B "sotto il cofano".
+Il progetto Pynance ha percorso le tappe **in questo ordine**: prima la A
+(Render, in `../journal/09-deploy-paas-render.md`) per andare online subito e
+assorbire i concetti (build, env vars, deploy, migrazioni) su una piattaforma
+che fa il lavoro sporco, e poi la C (VPS + Docker + Caddy, in
+`../journal/10-docker-deploy-and-readiness.md`) quando le basi erano chiare.
+Le conoscenze della C sono quelle che permettono di capire cosa fanno A e B
+"sotto il cofano".
 
 ---
 
@@ -610,7 +608,8 @@ ma questo è il momento di *iniziare bene*, non di fare tutto subito.
 
 ## Riferimenti in questo progetto
 
-- `../journal/09-docker-deploy-and-readiness.md` — la strategia C nel dettaglio.
+- `../journal/10-docker-deploy-and-readiness.md` — la strategia C nel dettaglio.
+- `../journal/09-deploy-paas-render.md` — la strategia A (primo deploy) in pratica.
 - ADR 0005 — cookie di sessione HttpOnly (parte della difesa da XSS/CSRF).
 - ADR 0006 — single-origin e perché il CORS non serve.
 - ADR 0007 — l'architettura di deploy scelta nel progetto.

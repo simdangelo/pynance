@@ -382,7 +382,7 @@ $RECYCLE.BIN/
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,pycharm,macos,linux,windows
 
 # custom
-plans/
 local/
+superpowers/
 .superpowers/
 frontend/@/

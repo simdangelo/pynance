@@ -29,7 +29,7 @@ concrete:
 
 La cartella `docs/journal/` raccoglie un file per **modulo del roadmap** (o
 per fetta di lavoro significativa), con un numero che ne fissa l'ordine
-(`04-recurring-transactions.md`, `10-deploy-paas-render.md`). Il numero
+(`04-recurring-transactions.md`, `09-deploy-paas-render.md`). Il numero
 segue la progressione del lavoro: leggere i journal in ordine è rileggere la
 storia del progetto.
 
@@ -80,7 +80,7 @@ entrambe: la wiki insegna, il journal racconta quando l'abbiamo incontrata.
 
 Il journal non vive isolato: rimanda ai concetti (`docs/wiki/...`) e alle
 decisioni (`docs/adr/...`). Il percorso dei riferimenti è relativo al file
-(es. dal journal `docs/journal/10-deploy-paas-render.md`, la wiki è
+(es. dal journal `docs/journal/09-deploy-paas-render.md`, la wiki è
 `../wiki/deploy-guide.md`). Questi rimandi sono *punti di partenza*, non
 sostituti della spiegazione: chi legge il journal deve capire la storia
 anche senza aprirli, e usa i link per approfondire.

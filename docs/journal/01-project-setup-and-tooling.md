@@ -12,8 +12,8 @@ Il modulo fissa un gruppo di scelte di tooling. Alcune erano già vincolanti da 
 
 - **`pyproject.toml` come unica fonte di verità** — al posto di `requirements.txt` + `setup.py` + file di config sparsi. Tutti i tool leggono lo stesso file, ognuno la propria tabella `[tool.*]`. Concetto generale: vedi `../wiki/pyproject-toml.md`.
 - **`uv` come gestore di progetto** — sostituisce `pip`, `virtualenv`, `pip-tools` e, di fatto, `poetry`. Un solo binario, lockfile riproducibile, `uv run` per ogni comando. Concetto: `../wiki/uv.md`.
-- **Dipendenze di sviluppo in un gruppo `dev` separato** (`[dependency-groups]`, PEP 735) — pytest, ruff, mypy e pre-commit non devono mai arrivare in produzione; `uv sync --no-dev` installa solo il runtime. Questo è anche il prerequisito della build multi-stage Docker, vedi `09-docker-deploy-and-readiness.md`.
-- **Layout piatto** (`backend/pynance/`, non `backend/src/pynance/`) — scelto da `AGENTS.md`; `uv init --package` avrebbe generato il layout `src`, quindi il pacchetto è stato creato a mano. La distinzione progetto-vs-pacchetto è spiegata in `../wiki/uv.md`; il trade-off con il layout `src` è rimandato al journal del deploy (`09-docker-deploy-and-readiness.md`).
+- **Dipendenze di sviluppo in un gruppo `dev` separato** (`[dependency-groups]`, PEP 735) — pytest, ruff, mypy e pre-commit non devono mai arrivare in produzione; `uv sync --no-dev` installa solo il runtime. Questo è anche il prerequisito della build multi-stage Docker, vedi `09-deploy-paas-render.md`.
+- **Layout piatto** (`backend/pynance/`, non `backend/src/pynance/`) — scelto da `AGENTS.md`; `uv init --package` avrebbe generato il layout `src`, quindi il pacchetto è stato creato a mano. La distinzione progetto-vs-pacchetto è spiegata in `../wiki/uv.md`; il trade-off con il layout `src` è rimandato al journal del deploy (`09-deploy-paas-render.md`).
 - **`ruff` con regole esplicite** (E, F, I, UP, B) e `line-length` a 100 — vedi `../wiki/ruff-mypy.md`.
 - **`mypy` strict dal primo giorno** — vedi `../wiki/ruff-mypy.md`.
 - **Struttura a strati come scheletro vuoto** — `api/`, `schemas/`, `services/`, `models/` come pacchetti importabili senza feature code. Concetto: `../wiki/layered-structure.md`.
@@ -72,7 +72,7 @@ Il commit `dfae580` è stato creato con questi check verdi: il backbone è "plum
 ## Cosa è rimasto aperto
 
 - **La CI come gate autorevole.** Per ora pre-commit è l'unico gate e funziona solo sulla macchina locale; chi può disattivarlo lo fa. La CI (fonte di verità che gira ovunque) è fuori scope fino a un modulo successivo — vedi `../wiki/pre-commit.md` per il trade-off.
-- **Layout `src` vs piatto.** Il trade-off è dichiarato ma non esplorato: rimandato al journal del deploy (`09-docker-deploy-and-readiness.md`).
+- **Layout `src` vs piatto.** Il trade-off è dichiarato ma non esplorato: rimandato al journal del deploy (`09-deploy-paas-render.md`).
 - **La strategia di test vera e propria.** Testare attraverso l'HTTP layer contro un Postgres reale arriva con la business logic (journal `03-business-logic-api-tests.md`); qui c'è solo il test smoke.
 - **Feature code.** Gli strati sono vuoti di proposito: `models/` si riempie in 02, `services/`, `schemas/` e `api/` in 03.
 - **La documentazione di modulo.** Il vecchio file misto del modulo 1 è stato suddiviso nelle wiki di concetto citate sopra e in questo journal: i concetti generali (pyproject, uv, ruff/mypy, pre-commit, struttura a strati) stanno in `../wiki/`, la storia di questo modulo sta qui.

@@ -65,7 +65,7 @@ def _parse_date(value: object) -> date:
         return value.date()
     if isinstance(value, date):
         return value
-    return datetime.strptime(str(value).strip(), "%Y-%m-%d").date()
+    return date.fromisoformat(str(value).strip())
 
 
 def _parse_csv(content: bytes) -> tuple[list[ImportRow], int]:

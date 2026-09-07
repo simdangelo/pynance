@@ -125,6 +125,23 @@ frontend (single origin). Deploy it to any PaaS:
 The app runs migrations automatically on startup (`alembic upgrade head`),
 so a fresh database is set up without extra steps.
 
+## Deploy completo su VPS
+
+Lo stack di produzione gira su un VPS (Oracle Cloud ARM, free tier) con
+Docker Compose e Caddy: un solo compose orchestra database, backend (che
+serve anche il frontend), bot Telegram e reverse proxy.
+
+```bash
+# Sul server, nella directory del repo con il .env configurato:
+docker compose --profile bot up -d --build
+```
+
+- Il database non espone porte all'esterno (rete privata di compose).
+- Caddy emette e rinnova i certificati Let's Encrypt per `DOMAIN`.
+- Il bot è opzionale (`--profile bot`): si aggiunge/toglie senza toccare il resto.
+- Backup giornaliero: cron sul host che lancia `scripts/backup.sh`
+  (pg_dump → gzip → rotazione ultime 7). Ripristino: `scripts/restore.sh <file>`.
+
 ## License
 
 Not yet licensed.

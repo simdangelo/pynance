@@ -251,6 +251,31 @@ curl https://<DOMAIN>/api/health
 - I test esistenti passano invariati: il router statico è condizionale e non
   tocca l'ambiente di test (ADR 0007 lo registra).
 
+## Lo smoke test locale (prima del VPS)
+
+Prima di portare lo stack su un server vero, l'abbiamo provato in locale con
+`DOMAIN=localhost` (Caddy usa la sua CA locale, quindi `curl -k` o il browser
+con l'eccezione della CA rispondono su HTTPS):
+
+```bash
+docker compose up -d --build db backend proxy
+curl -k https://localhost/api/health        # {"status":"ok"}
+curl -k https://localhost/transactions      # 200 (SPA fallback)
+```
+
+Esito: health 200, SPA fallback 200, migrazioni eseguite all'avvio, e nei
+log del backend gli IP dei client appaiono reali (`172.20.0.1`, il gateway
+di compose) — la conferma locale che `--proxy-headers` e
+`--forwarded-allow-ips` funzionano. Il bot non è stato avviato nello smoke
+test (richiede un token Telegram reale).
+
+**Un'insidia in più registrata**: il primo `docker compose up` (senza
+`--build`) ha riusato un'immagine `pynance-backend` stantia di build
+precedenti, che non conteneva le migrazioni più recenti → il backend è
+entrato in restart loop con "Can't locate revision identified by
+'...'". Fix: `docker compose up -d --build` (o `docker compose build`
+prima di `up`). Sul server vero, la prima volta si usa sempre `--build`.
+
 ## Cosa è rimasto aperto
 
 - **Le restrizioni del free tier Oracle possono cambiare.** A giugno 2026

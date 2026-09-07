@@ -1,0 +1,9 @@
+# Override per lo sviluppo locale. Usare sempre insieme al file base:
+#   docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d db
+# Pubblica la porta di Postgres (per psql e per i test) e crea il DB di test.
+services:
+  db:
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d

@@ -226,5 +226,6 @@ bisogno di un container).
 
 Il deploy del bot è **rimandato**: finché l'app resta su Render, il bot non
 gira in produzione. Lo faremo funzionare quando passeremo alla **soluzione
-custom** (VPS con risorse adeguate): il `docker-compose.bot.yml` per il
-deploy è nel repo e il problema RAM è compreso — è il percorso del journal 10.
+custom** (VPS con risorse adeguate): il bot è già previsto come servizio
+opzionale dello stack (journal 10, `profiles: ["bot"]`) e il problema RAM è
+compreso — è il percorso del journal 10.

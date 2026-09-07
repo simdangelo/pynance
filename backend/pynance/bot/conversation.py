@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -185,7 +185,7 @@ async def confirm_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                     category_id=category_id,
                     asset_id=asset_id,
                     description=description,
-                    occurred_on=date.today(),
+                    occurred_on=datetime.now(UTC).date(),
                 ),
             )
     except CategoryNotFoundError, AssetNotFoundError:

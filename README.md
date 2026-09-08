@@ -26,8 +26,8 @@ worth over time, all in a self-hostable app you control.
 # 1. Environment (fill in the values)
 cp .env.example .env
 
-# 2. Start the database
-docker compose up -d db
+# 2. Start the database (dev override publishes the port for local tools)
+docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d db
 
 # 3. Backend (http://localhost:8000)
 cd backend
@@ -42,6 +42,16 @@ npm run dev
 ```
 
 Open http://localhost:5173, register an account, and start recording.
+
+### Why the dev override?
+
+`docker-compose.yaml` is the **production** stack: Postgres lives on a private
+compose network and exposes **no port** to the outside world. That's what a
+deployed server wants. But local development needs the DB reachable on
+`localhost:5432` (for `psql`, Alembic, pytest and the Vite dev server), so
+`docker-compose.dev.yaml` re-publishes the port. Use both files together in
+dev; the production command on the server uses only the base file (see the
+VPS section below).
 
 ## Configuration
 
@@ -82,10 +92,7 @@ The bot doesn't know who you are until you link it. This is a **one-time**
 step:
 
 1. Open the web app (http://localhost:5173) and log in.
-2. In the browser console (`F12`), request a link code:
-   ```js
-   fetch('/api/telegram/link-code', { method: 'POST' }).then(r => r.json()).then(d => prompt('Codice:', d.code))
-   ```
+2. Go to **Account** → **Bot Telegram** → **Genera codice**.
 3. Send the code to the bot: `/link <code>`.
 4. The bot replies `✓ Account collegato`.
 
@@ -134,6 +141,13 @@ serve anche il frontend), bot Telegram e reverse proxy.
 ```bash
 # Sul server, nella directory del repo con il .env configurato:
 docker compose --profile bot up -d --build
+```
+
+Dopo il primo deploy, per aggiornare l'app basta un comando (pull + rebuild +
+restart):
+
+```bash
+./scripts/deploy.sh
 ```
 
 - Il database non espone porte all'esterno (rete privata di compose).

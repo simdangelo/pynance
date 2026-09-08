@@ -226,4 +226,8 @@ export const api = {
       }),
     remove: (id: number) => request<void>(`/api/transfers/${id}`, { method: "DELETE" }),
   },
+  telegram: {
+    createLinkCode: () =>
+      request<{ code: string }>("/api/telegram/link-code", { method: "POST" }),
+  },
 }

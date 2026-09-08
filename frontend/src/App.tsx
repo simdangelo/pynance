@@ -11,6 +11,7 @@ import Assets from "@/pages/assets"
 import Transfers from "@/pages/transfers"
 import Categories from "@/pages/categories"
 import ImportData from "@/pages/import"
+import Account from "@/pages/account"
 
 function AppRoutes() {
   return (
@@ -27,6 +28,7 @@ function AppRoutes() {
         <Route path="/transfers" element={<Transfers />} />
         <Route path="/import" element={<ImportData />} />
         <Route path="/categories" element={<Categories />} />
+        <Route path="/account" element={<Account />} />
         <Route path="*" element={<Navigate to="/overview" replace />} />
       </Route>
     </Routes>

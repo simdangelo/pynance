@@ -9,6 +9,7 @@ import {
   Receipt,
   Repeat,
   Settings,
+  UserRound,
 } from "lucide-react"
 
 import { useAuth } from "@/lib/auth"
@@ -95,6 +96,23 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             </NavLink>
           )
         })}
+        <div className="mt-3 border-t border-border pt-3">
+          <NavLink
+            to="/account"
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors",
+                isActive
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground/70 hover:bg-secondary/50 hover:text-foreground",
+              )
+            }
+          >
+            <UserRound className="h-4 w-4 shrink-0" />
+            <span>Account</span>
+          </NavLink>
+        </div>
         <div className="mt-3 border-t border-border pt-3">
           <div className="flex items-center justify-between gap-2 px-3">
             <span className="truncate text-xs text-muted-foreground">{user?.email}</span>

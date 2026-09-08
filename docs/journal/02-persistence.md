@@ -75,6 +75,12 @@ Due dettagli non ovvi:
   senza, i passi successivi (migrazioni) si sarebbero scontrati con "DB non
   ancora pronto".
 
+> **Nota per chi legge in ordine**: in questo modulo il compose è un file
+> unico che pubblica la porta del DB, perché l'obiettivo è solo lo sviluppo
+> locale. Dal deploy completo (journal 10) il compose diventa lo stack di
+> produzione e la porta si sposta in un override `docker-compose.dev.yaml`
+> usato solo in sviluppo — il perché di quel cambio è spiegato lì.
+
 ### `.env.example` (alla radice)
 
 Il modello di `.env` **committato** (il `.env` vero è gitignored): dichiara le

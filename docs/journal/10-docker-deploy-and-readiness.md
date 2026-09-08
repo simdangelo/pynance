@@ -98,7 +98,7 @@ Il compose di produzione descrive **quattro servizi** sulla rete privata
 - **`backend`**: build dal Dockerfile multi-stage, tutte le env da `.env`,
   `ALLOWED_HOSTS=["${DOMAIN:-localhost}", "localhost", "127.0.0.1"]`,
   `SECURE_COOKIES: "true"`, `FORWARDED_ALLOW_IPS: "172.20.0.5"`.
-- **`bot`**: stessa immagine, `command: ["uv", "run", "python", "-m",
+- **`bot`**: stessa immagine, `command: ["/app/.venv/bin/python", "-m",
   "pynance.bot.main"]`, `profiles: ["bot"]` — non parte con lo stack di
   default.
 - **`proxy`**: `caddy:2`, l'unico con `ports:` pubblicate (`:80`/`:443`),
@@ -112,6 +112,18 @@ accordo al file base: `docker compose -f docker-compose.yaml -f
 docker-compose.dev.yaml up -d db`. La scelta di non pubblicare la porta nel
 file principale è la traduzione concreta della regola "il DB non deve essere
 raggiungibile dall'esterno".
+
+**Questa è una rottura deliberata con il modulo 2**: lì il compose aveva una
+sola forma e pubblicava la porta `${POSTGRES_PORT}:5432` sull'host (vedi
+journal 02). Quel modulo guardava solo a *sviluppo locale*, dove la porta
+serviva a `psql` e ai test. Ora il compose principale è lo **stack di
+produzione** (quattro servizi, rete privata), e su un server raggiungibile
+da internet una porta di Postgres aperta sarebbe una superficie d'attacco
+inutile. La porta non è stata eliminata: è **cambiata casa**, nell'override
+che solo l'ambiente di sviluppo usa. Il prezzo di questa pulizia è che il
+comando di sviluppo è diventato più lungo (due file invece di uno), e la
+regola "in dev si usa sempre il compose + l'override" va rispettata — è
+documentata nel README (Quick start) e qui.
 
 ### `Caddyfile` — il proxy
 

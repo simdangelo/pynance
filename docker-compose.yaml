@@ -52,7 +52,7 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-    command: ["uv", "run", "python", "-m", "pynance.bot.main"]
+    command: ["/app/.venv/bin/python", "-m", "pynance.bot.main"]
     depends_on:
       db:
         condition: service_healthy

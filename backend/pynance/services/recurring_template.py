@@ -52,7 +52,12 @@ def create_recurring_template(
 
 def list_recurring_templates(db: Session, user_id: int) -> list[RecurringTemplate]:
     return list(
-        db.execute(select(RecurringTemplate).where(RecurringTemplate.user_id == user_id))
+        db.execute(
+            select(RecurringTemplate)
+            .where(RecurringTemplate.user_id == user_id)
+            .join(Category, RecurringTemplate.category_id == Category.id, isouter=True)
+            .order_by(Category.transaction_type, RecurringTemplate.description)
+        )
         .scalars()
         .all()
     )

@@ -48,7 +48,11 @@ def get_asset(db: Session, user_id: int, asset_id: int) -> Asset:
 
 
 def list_assets(db: Session, user_id: int) -> list[Asset]:
-    return list(db.execute(select(Asset).where(Asset.user_id == user_id)).scalars().all())
+    return list(
+        db.execute(select(Asset).where(Asset.user_id == user_id).order_by(Asset.name))
+        .scalars()
+        .all()
+    )
 
 
 def update_asset(db: Session, user_id: int, asset_id: int, update: AssetUpdate) -> Asset:

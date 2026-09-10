@@ -30,7 +30,11 @@ def create_category(db: Session, user_id: int, category: CategoryCreate) -> Cate
 
 
 def list_categories(db: Session, user_id: int) -> list[Category]:
-    return list(db.execute(select(Category).where(Category.user_id == user_id)).scalars().all())
+    return list(
+        db.execute(select(Category).where(Category.user_id == user_id).order_by(Category.name))
+        .scalars()
+        .all()
+    )
 
 
 def delete_category(db: Session, user_id: int, category_id: int) -> Category:

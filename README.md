@@ -77,6 +77,33 @@ uv run mypy .        # type check
 The CI workflow (`.github/workflows/ci.yml`) runs all three on every push
 and pull request.
 
+## Demo data (optional)
+
+To explore the app with realistic data instead of an empty database, seed
+about 10 years of fake transactions. Make sure the database is running and
+migrated (see Quick start above), then:
+
+```bash
+cd backend
+uv run python scripts/seed_demo_data.py
+```
+
+The script creates a single demo account you can log in with:
+
+| | |
+|---|---|
+| **Email** | `demo@example.com` |
+| **Password** | `demo1234` |
+
+It generates a deterministic dataset (same data on every run): salary and
+rent that grow over the years, groceries, bills, subscriptions, occasional
+shopping and travel, a monthly savings transfer, and a few recurring
+templates.
+
+> **Warning:** the script **deletes all existing data** in the database it
+> connects to before inserting the demo data. It is meant for local use
+> only — never run it against a production database.
+
 ## Telegram bot
 
 The bot lets you log an expense from your phone without opening the app.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Landmark } from "lucide-react"
@@ -35,19 +35,37 @@ interface TransactionDialogProps {
   transaction?: Transaction | null
 }
 
+interface Draft {
+  amount: string
+  categoryId: string
+  assetId: string
+  description: string
+  occurredOn: string
+}
+
+const emptyDraft = (): Draft => ({
+  amount: "",
+  categoryId: "",
+  assetId: "",
+  description: "",
+  occurredOn: todayLocalISO(),
+})
+
 export function TransactionDialog({ open, onOpenChange, transaction }: TransactionDialogProps) {
   const queryClient = useQueryClient()
   const isEditing = Boolean(transaction)
 
   const [type, setType] = useState<TransactionType>("income")
-  const [amount, setAmount] = useState("")
-  const [categoryId, setCategoryId] = useState("")
-  const [assetId, setAssetId] = useState("")
-  const [description, setDescription] = useState("")
-  const [occurredOn, setOccurredOn] = useState("")
+  const [drafts, setDrafts] = useState<Record<TransactionType, Draft>>({
+    income: emptyDraft(),
+    expense: emptyDraft(),
+  })
+  const [formError, setFormError] = useState("")
 
-  // Remember the last category chosen for each type, so toggling back restores it.
-  const categoryByType = useRef<Partial<Record<TransactionType, number>>>({})
+  const draft = drafts[type]
+
+  const updateDraft = (patch: Partial<Draft>) =>
+    setDrafts((prev) => ({ ...prev, [type]: { ...prev[type], ...patch } }))
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
@@ -60,17 +78,28 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
   })
 
   useEffect(() => {
-    if (open) {
-      setType(transaction?.transaction_type ?? "income")
-      setAmount(transaction?.amount ?? "")
-      setCategoryId(transaction ? String(transaction.category_id) : "")
-      setAssetId(transaction ? String(transaction.asset_id) : "")
-      setDescription(transaction?.description ?? "")
-      setOccurredOn(transaction?.occurred_on ?? todayLocalISO())
-      if (transaction && transaction.transaction_type) {
-        categoryByType.current[transaction.transaction_type] = transaction.category_id
-      }
+    if (!open) return
+
+    // A new transaction starts from a clean slate for both types; editing
+    // seeds only the draft of the transaction's own type.
+    if (transaction) {
+      setType(transaction.transaction_type)
+      setDrafts({
+        income: emptyDraft(),
+        expense: emptyDraft(),
+        [transaction.transaction_type]: {
+          amount: transaction.amount,
+          categoryId: String(transaction.category_id),
+          assetId: String(transaction.asset_id),
+          description: transaction.description,
+          occurredOn: transaction.occurred_on,
+        },
+      })
+    } else {
+      setType("income")
+      setDrafts({ income: emptyDraft(), expense: emptyDraft() })
     }
+    setFormError("")
   }, [open, transaction])
 
   const income = type === "income"
@@ -81,20 +110,16 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
   )
 
   const selectedCategory = useMemo(
-    () => categories?.find((c) => String(c.id) === categoryId),
-    [categories, categoryId],
+    () => categories?.find((c) => String(c.id) === draft.categoryId),
+    [categories, draft.categoryId],
   )
 
   const selectedAsset = useMemo(
-    () => assets?.find((a) => String(a.id) === assetId),
-    [assets, assetId],
+    () => assets?.find((a) => String(a.id) === draft.assetId),
+    [assets, draft.assetId],
   )
 
-  const handleTypeChange = (newType: TransactionType) => {
-    setType(newType)
-    const saved = categoryByType.current[newType]
-    setCategoryId(saved ? String(saved) : "")
-  }
+  const handleTypeChange = (newType: TransactionType) => setType(newType)
 
   const mutation = useMutation({
     mutationFn: (data: unknown) =>
@@ -108,25 +133,23 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
     onError: (error: Error) => toast.error(error.message || "Failed to save transaction"),
   })
 
-  const [formError, setFormError] = useState("")
-
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!categoryId) {
+    if (!draft.categoryId) {
       setFormError("Select a category first")
       return
     }
-    if (!assetId) {
+    if (!draft.assetId) {
       setFormError("Select an asset first")
       return
     }
     setFormError("")
     mutation.mutate({
-      amount,
-      category_id: Number(categoryId),
-      asset_id: Number(assetId),
-      description,
-      occurred_on: occurredOn,
+      amount: draft.amount,
+      category_id: Number(draft.categoryId),
+      asset_id: Number(draft.assetId),
+      description: draft.description,
+      occurred_on: draft.occurredOn,
     })
   }
 
@@ -156,12 +179,9 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
               </div>
             ) : (
               <Select
-                value={categoryId}
+                value={draft.categoryId}
                 onValueChange={(v) => {
-                  if (v) {
-                    setCategoryId(v)
-                    categoryByType.current[type] = Number(v)
-                  }
+                  if (v) updateDraft({ categoryId: v })
                 }}
               >
                 <SelectTrigger className="w-full">
@@ -189,9 +209,9 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
               </div>
             ) : (
               <Select
-                value={assetId}
+                value={draft.assetId}
                 onValueChange={(v) => {
-                  if (v) setAssetId(v)
+                  if (v) updateDraft({ assetId: v })
                 }}
               >
                 <SelectTrigger className="w-full">
@@ -234,8 +254,8 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
                 step="0.01"
                 min="0"
                 required
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                value={draft.amount}
+                onChange={(e) => updateDraft({ amount: e.target.value })}
                 placeholder="0.00"
                 className="h-10 pl-12 font-numeric text-lg"
               />
@@ -247,8 +267,8 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
             <Label>Description</Label>
             <Input
               required
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={draft.description}
+              onChange={(e) => updateDraft({ description: e.target.value })}
               placeholder="e.g. Weekly groceries"
             />
           </div>
@@ -256,8 +276,8 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
           {/* Date */}
           <DateField
             label="Date"
-            value={occurredOn}
-            onChange={setOccurredOn}
+            value={draft.occurredOn}
+            onChange={(value) => updateDraft({ occurredOn: value })}
             required
           />
 
@@ -272,7 +292,7 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
               Adds to <span className="font-medium text-foreground">{selectedAsset?.name ?? "—"}</span>
             </span>
             <Money
-              value={amount || "0"}
+              value={draft.amount || "0"}
               signed
               className={cn(
                 "font-medium",

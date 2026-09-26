@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { Landmark } from "lucide-react"
+import { Landmark, Layers } from "lucide-react"
 
 import { api } from "@/lib/api"
-import type { Asset, AssetType } from "@/types/api"
+import type { Asset, AssetClass } from "@/types/api"
+import {
+  ASSET_CLASSES,
+  ASSET_CLASS_LABEL,
+  LIQUIDITY_COLOR,
+  LIQUIDITY_LABEL,
+} from "@/lib/asset-meta"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -30,23 +36,37 @@ interface AssetDialogProps {
   asset?: Asset | null
 }
 
-const ASSET_TYPES: AssetType[] = ["liquid", "savings", "etf"]
-
 export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
   const queryClient = useQueryClient()
   const isEditing = Boolean(asset)
 
+  const { data: buckets } = useQuery({
+    queryKey: ["buckets"],
+    queryFn: api.buckets.list,
+  })
+
   const [name, setName] = useState("")
-  const [assetType, setAssetType] = useState<AssetType>("liquid")
+  const [assetClass, setAssetClass] = useState<AssetClass>("current_account")
+  const [bucketId, setBucketId] = useState("")
   const [openingBalance, setOpeningBalance] = useState("")
 
   useEffect(() => {
     if (open) {
       setName(asset?.name ?? "")
-      setAssetType(asset?.asset_type ?? "liquid")
+      setAssetClass(asset?.asset_class ?? "current_account")
+      setBucketId(asset ? String(asset.bucket_id) : "")
       setOpeningBalance(asset?.opening_balance ?? "0")
     }
   }, [open, asset])
+
+  // A new asset defaults to the first bucket, once buckets are loaded.
+  useEffect(() => {
+    if (open && !asset && !bucketId && buckets && buckets.length > 0) {
+      setBucketId(String(buckets[0].id))
+    }
+  }, [open, asset, bucketId, buckets])
+
+  const selectedBucket = buckets?.find((bucket) => String(bucket.id) === bucketId)
 
   const mutation = useMutation({
     mutationFn: (data: Parameters<typeof api.assets.create>[0]) =>
@@ -64,12 +84,19 @@ export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!bucketId) {
+      toast.error("Select a bucket first")
+      return
+    }
     mutation.mutate({
       name,
-      asset_type: assetType,
+      asset_class: assetClass,
+      bucket_id: Number(bucketId),
       opening_balance: openingBalance || "0",
     })
   }
+
+  const noBuckets = buckets && buckets.length === 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,24 +122,75 @@ export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Type</Label>
-            <Select value={assetType} onValueChange={(v) => v && setAssetType(v as AssetType)}>
+            <Label>Asset class</Label>
+            <Select
+              value={assetClass}
+              onValueChange={(v) => v && setAssetClass(v as AssetClass)}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue>
                   <span className="flex items-center gap-2">
                     <Landmark className="size-4 text-muted-foreground" />
-                    {assetType.charAt(0).toUpperCase() + assetType.slice(1)}
+                    {ASSET_CLASS_LABEL[assetClass]}
                   </span>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {ASSET_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                {ASSET_CLASSES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {ASSET_CLASS_LABEL[value]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              What the instrument actually is, not what you use it for.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Bucket</Label>
+            {noBuckets ? (
+              <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
+                No buckets yet. Create one in the Assets page first.
+              </div>
+            ) : (
+              <Select value={bucketId} onValueChange={(v) => v && setBucketId(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {selectedBucket ? (
+                      <span className="flex items-center gap-2">
+                        <Layers className="size-4 text-muted-foreground" />
+                        {selectedBucket.name}
+                        <span className="text-xs text-muted-foreground">
+                          · {LIQUIDITY_LABEL[selectedBucket.liquidity_category]}
+                        </span>
+                      </span>
+                    ) : (
+                      "Select a bucket"
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {buckets?.map((bucket) => (
+                    <SelectItem key={bucket.id} value={String(bucket.id)}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="size-2 rounded-full"
+                          style={{
+                            backgroundColor: LIQUIDITY_COLOR[bucket.liquidity_category],
+                          }}
+                        />
+                        {bucket.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <p className="text-xs text-muted-foreground">
+              What this money is for; it decides the liquidity split.
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -140,7 +218,7 @@ export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button type="submit" disabled={mutation.isPending || Boolean(noBuckets)}>
               {isEditing ? "Save" : "Add"}
             </Button>
           </DialogFooter>

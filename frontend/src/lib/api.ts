@@ -1,6 +1,9 @@
 import type {
+  Allocation,
   Asset,
   AssetInput,
+  Bucket,
+  BucketInput,
   Category,
   Comparison,
   ImportPreview,
@@ -203,6 +206,25 @@ export const api = {
     netWorthTrend: (startDate: string, endDate: string) =>
       request<NetWorthTrendPoint[]>(
         `/api/assets/net-worth-trend?start_date=${startDate}&end_date=${endDate}`,
+      ),
+    allocation: () => request<Allocation>("/api/assets/allocation"),
+  },
+  buckets: {
+    list: () => request<Bucket[]>("/api/buckets"),
+    create: (data: BucketInput) =>
+      request<Bucket>("/api/buckets", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: number, data: Partial<BucketInput>) =>
+      request<Bucket>(`/api/buckets/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    remove: (id: number, reassignTo?: number) =>
+      request<void>(
+        `/api/buckets/${id}${reassignTo ? `?reassign_to=${reassignTo}` : ""}`,
+        { method: "DELETE" },
       ),
   },
   transfers: {

@@ -5,7 +5,13 @@ import { ArrowRight } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { api } from "@/lib/api"
-import type { AssetType } from "@/types/api"
+import {
+  ASSET_CLASSES,
+  ASSET_CLASS_COLOR,
+  ASSET_CLASS_LABEL,
+  LIQUIDITY_COLOR,
+  LIQUIDITY_LABEL,
+} from "@/lib/asset-meta"
 import { cn } from "@/lib/utils"
 import { Money } from "@/components/money"
 import { TrendRangeSelector, rangeToDates, type TrendRange } from "@/components/trend-range-selector"
@@ -15,20 +21,6 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-
-const ASSET_TYPE_LABEL: Record<AssetType, string> = {
-  liquid: "Liquid",
-  savings: "Savings",
-  etf: "ETF",
-}
-
-const ASSET_TYPE_COLOR: Record<AssetType, string> = {
-  liquid: "var(--color-petrol)",
-  savings: "var(--color-moss)",
-  etf: "var(--color-ochre)",
-}
-
-const ASSET_TYPES = Object.keys(ASSET_TYPE_LABEL) as AssetType[]
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -46,6 +38,11 @@ export default function OverviewNetWorth() {
   const { data: assets, isLoading: assetsLoading } = useQuery({
     queryKey: ["assets"],
     queryFn: api.assets.list,
+  })
+
+  const { data: allocation, isLoading: allocationLoading } = useQuery({
+    queryKey: ["allocation"],
+    queryFn: api.assets.allocation,
   })
 
   const { start, end } = useMemo(() => rangeToDates(range), [range])
@@ -85,22 +82,25 @@ export default function OverviewNetWorth() {
   const moodColor = isPositive ? "var(--color-petrol)" : "var(--color-clay)"
   const moodGradientId = isPositive ? "moodPetrol" : "moodClay"
 
-  const allocationData = useMemo(() => {
-    const totals: Record<AssetType, number> = { liquid: 0, savings: 0, etf: 0 }
+  const classAllocation = useMemo(() => {
+    const totals: Partial<Record<string, number>> = {}
     for (const asset of assets ?? []) {
-      totals[asset.asset_type] += Number(asset.balance)
+      totals[asset.asset_class] = (totals[asset.asset_class] ?? 0) + Number(asset.balance)
     }
-    const total = Object.values(totals).reduce((sum, v) => sum + v, 0) || 1
-    return ASSET_TYPES.map((type) => ({
-      type,
-      name: ASSET_TYPE_LABEL[type],
-      value: totals[type],
-      pct: (totals[type] / total) * 100,
-      color: ASSET_TYPE_COLOR[type],
+    const sum = Object.values(totals).reduce<number>((acc, value) => acc + (value ?? 0), 0)
+    return ASSET_CLASSES.map((assetClass) => ({
+      assetClass,
+      name: ASSET_CLASS_LABEL[assetClass],
+      value: totals[assetClass] ?? 0,
+      pct: sum > 0 ? ((totals[assetClass] ?? 0) / sum) * 100 : 0,
+      color: ASSET_CLASS_COLOR[assetClass],
     }))
       .filter((entry) => entry.value > 0)
       .sort((a, b) => b.value - a.value)
   }, [assets])
+
+  const liquidityRows = allocation?.by_liquidity ?? []
+  const liquidityTotal = liquidityRows.reduce((sum, row) => sum + Number(row.total), 0)
 
   return (
     <div className="space-y-5">
@@ -143,6 +143,75 @@ export default function OverviewNetWorth() {
           )}
         </div>
       </section>
+
+      {/* Liquidity — spendable / reserve / invested, from the buckets */}
+      {!allocationLoading && (assets?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="space-y-0.5">
+              <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/60 uppercase">
+                Liquidity
+              </span>
+              <div className="text-sm text-muted-foreground">
+                What you can spend, what you keep as a reserve, what is invested
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              {liquidityRows.map((row) => (
+                <div key={row.liquidity_category}>
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: LIQUIDITY_COLOR[row.liquidity_category] }}
+                    />
+                    {LIQUIDITY_LABEL[row.liquidity_category]}
+                  </span>
+                  <span className="mt-1 block font-numeric text-lg font-medium">
+                    <Money value={row.total} />
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex h-2.5 gap-0.5 overflow-hidden rounded-full">
+              {liquidityRows.map((row) => {
+                const pct =
+                  liquidityTotal > 0 ? (Number(row.total) / liquidityTotal) * 100 : 0
+                return (
+                  <div
+                    key={row.liquidity_category}
+                    className="h-full"
+                    style={{
+                      width: `${Math.max(pct, 1)}%`,
+                      backgroundColor: LIQUIDITY_COLOR[row.liquidity_category],
+                    }}
+                  />
+                )
+              })}
+            </div>
+            {allocation && allocation.by_bucket.length > 0 && (
+              <div className="mt-4 space-y-1.5 border-t border-border pt-3">
+                {allocation.by_bucket.map((row) => (
+                  <div
+                    key={row.bucket_id}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="size-2 rounded-full"
+                        style={{ backgroundColor: LIQUIDITY_COLOR[row.liquidity_category] }}
+                      />
+                      <span className="font-medium">{row.bucket_name}</span>
+                    </span>
+                    <Money value={row.total} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Trend — full width */}
       <Card>
@@ -204,8 +273,8 @@ export default function OverviewNetWorth() {
         </CardContent>
       </Card>
 
-      {/* Allocation — snapshot, type-level, below the chart */}
-      {!assetsLoading && allocationData.length > 0 && (
+      {/* Allocation — snapshot, asset class level, below the chart */}
+      {!assetsLoading && classAllocation.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <div className="space-y-0.5">
@@ -213,15 +282,15 @@ export default function OverviewNetWorth() {
                 Current allocation
               </span>
               <div className="text-sm text-muted-foreground">
-                By asset type, today
+                By asset class, today
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full">
-              {allocationData.map((entry) => (
+              {classAllocation.map((entry) => (
                 <div
-                  key={entry.type}
+                  key={entry.assetClass}
                   className="h-full"
                   style={{
                     width: `${Math.max(entry.pct, 1)}%`,
@@ -231,8 +300,8 @@ export default function OverviewNetWorth() {
               ))}
             </div>
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
-              {allocationData.map((entry) => (
-                <span key={entry.type} className="flex items-center gap-2 text-sm">
+              {classAllocation.map((entry) => (
+                <span key={entry.assetClass} className="flex items-center gap-2 text-sm">
                   <span
                     className="size-2 rounded-full"
                     style={{ backgroundColor: entry.color }}

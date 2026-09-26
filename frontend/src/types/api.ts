@@ -2,7 +2,18 @@ export type TransactionType = "income" | "expense"
 
 export type Frequency = "yearly" | "monthly" | "weekly" | "custom"
 
-export type AssetType = "liquid" | "savings" | "etf"
+export type AssetClass =
+  | "current_account"
+  | "deposit_account"
+  | "money_market_etf"
+  | "government_bond"
+  | "corporate_bond"
+  | "bond_etf"
+  | "equity_etf"
+  | "stock"
+  | "other"
+
+export type LiquidityCategory = "liquid" | "reserve" | "invested"
 
 export interface User {
   id: number
@@ -37,7 +48,9 @@ export interface Category {
 export interface Asset {
   id: number
   name: string
-  asset_type: AssetType
+  asset_class: AssetClass
+  bucket_id: number
+  liquidity_category: LiquidityCategory
   opening_balance: string
   created_at: string
   balance: string
@@ -45,8 +58,42 @@ export interface Asset {
 
 export interface AssetInput {
   name: string
-  asset_type: AssetType
+  asset_class: AssetClass
+  bucket_id: number
   opening_balance: string
+}
+
+export interface Bucket {
+  id: number
+  name: string
+  description: string | null
+  liquidity_category: LiquidityCategory
+  sort_order: number
+  created_at: string
+}
+
+export interface BucketInput {
+  name: string
+  description?: string | null
+  liquidity_category: LiquidityCategory
+  sort_order?: number
+}
+
+export interface LiquidityAllocationRow {
+  liquidity_category: LiquidityCategory
+  total: string
+}
+
+export interface BucketAllocationRow {
+  bucket_id: number
+  bucket_name: string
+  liquidity_category: LiquidityCategory
+  total: string
+}
+
+export interface Allocation {
+  by_liquidity: LiquidityAllocationRow[]
+  by_bucket: BucketAllocationRow[]
 }
 
 export interface Transaction {

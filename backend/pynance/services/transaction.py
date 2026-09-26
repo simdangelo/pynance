@@ -135,7 +135,7 @@ def list_transactions(
         select(Transaction)
         .options(selectinload(Transaction.category))
         .where(*conditions)
-        .order_by(Transaction.occurred_on.desc())
+        .order_by(Transaction.occurred_on.desc(), Transaction.created_at.desc())
     )
     return list(db.execute(query).scalars().all())
 

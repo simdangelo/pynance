@@ -211,6 +211,30 @@ def test_list_transactions_filters_by_category(client: TestClient) -> None:
     assert data[0]["description"] == "electricity"
 
 
+def test_list_transactions_orders_by_date_then_created_at(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    create_transaction(
+        client,
+        amount="10.00",
+        category_id=groceries["id"],
+        description="first created",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        amount="20.00",
+        category_id=groceries["id"],
+        description="second created",
+        occurred_on="2026-08-01",
+    )
+
+    response = client.get("/api/transactions?year=2026&month=8")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert [t["description"] for t in data] == ["second created", "first created"]
+
+
 def test_list_transactions_searches_by_description(client: TestClient) -> None:
     groceries = create_category(client, "groceries", "expense")
     create_transaction(

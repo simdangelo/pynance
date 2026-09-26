@@ -8,6 +8,7 @@ from pynance.config import settings
 from pynance.models.session import Session as UserSession
 from pynance.models.user import User
 from pynance.schemas.user import UserCreate, UserLogin
+from pynance.services.bucket import seed_default_buckets
 from pynance.services.exceptions import (
     DuplicateEmailError,
     InvalidCredentialsError,
@@ -26,6 +27,7 @@ def register_user(db: Session, data: UserCreate) -> User:
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    seed_default_buckets(db, new_user.id)
     return new_user
 
 

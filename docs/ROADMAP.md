@@ -45,7 +45,9 @@ allocation).
 - **One `Asset` table** with a `type` enum (`liquid`, `savings`, `etf`; more
   values can be added later) and a name. Flexibility comes from data, not
   schema: adding bitcoin later = adding an enum value; splitting Liquid into
-  two bank accounts = adding a row.
+  two bank accounts = adding a row. **(Evolved by item 9:** the single
+  `type` enum conflates instrument and purpose and is replaced by the
+  two-axis model — ADR 0009.)
 - **Cash/bank/debit/prepaid/PayPal collapse into a single `Liquid` asset.**
   No per-bank split for now (add rows later if needed).
 - **Balances are derived from transactions**, not stored: income/expense per
@@ -74,7 +76,8 @@ allocation).
 **Goal:** "where my money is" (Liquid / Savings / ETF / Bonds ...).
 
 - Group-by asset type over balances — a donut chart on the dashboard,
-  per the asset types already modeled.
+  per the asset types already modeled. **(Evolved by item 9:** composition
+  becomes allocation by asset class, plus the liquidity/bucket breakdown.)
 
 ---
 
@@ -151,6 +154,46 @@ one by one.
 
 ---
 
+## 9. Asset model v2: asset class + buckets — `done`
+
+**Goal:** open the app and immediately read how much is **spendable**
+(`LIQUID`), how much is a **safety reserve** (`RESERVE`), how much is
+**invested** (`INVESTED`), and break it down by purpose — without hardcoding
+any investment strategy into the schema.
+
+**Design decisions (made — ADR 0009):**
+- **Two independent axes.** `AssetClass` (objective taxonomy: current
+  account, deposit account, money-market/bond/equity ETF, bonds, stocks, ...)
+  replaces the `asset_type` enum; `Bucket` (per-user configurable rows:
+  purpose/strategy) is the second axis. The same instrument can serve
+  different roles without schema changes.
+- **`LiquidityCategory` fixed at three values** (`LIQUID`, `RESERVE`,
+  `INVESTED`), native enum. `Asset.liquidity_category` is **derived** from
+  the bucket; `Asset.bucket_id` is **required** (no money drops out of the
+  headline totals).
+- **Neutral default buckets** seeded at registration: "Liquidità
+  quotidiana", "Fondo di emergenza", "Investimenti" — immediately editable.
+  No 4-pillars vocabulary.
+- **No target fields** (budgeting/goals are out of scope) and **no free-text
+  sub-category** (geography/sector drill-down is deferred to
+  holdings/performance).
+- **API:** `/api/buckets` CRUD (delete = 409 unless `reassign_to`), and
+  `GET /api/assets/allocation` as a current snapshot (`by_liquidity`,
+  `by_bucket`) — not a period report.
+- **Indexes** on the new FK/class columns only if composite with `user_id`
+  and a query plan asks for them.
+
+**Dependencies:** replaces the enum decision of item 2 and the "allocation by
+asset type" of item 4; net worth (3) is unaffected.
+
+**Backend + frontend: `done`** (backend implemented as an unblock step; 129
+tests green, migration `fd3767429296`). Frontend: asset dialog (asset class +
+bucket), assets page grouped by bucket/liquidity with bucket management,
+net-worth page with the LIQUID / RESERVE / INVESTED headline, per-bucket
+breakdown, and allocation by asset class.
+
+---
+
 ## Deferred (explicitly out of scope for now)
 
 | Feature | Why deferred | When it might return |
@@ -159,7 +202,7 @@ one by one.
 | **Budgets** (planned vs actual per category) | User doesn't budget currently | If budgeting becomes a need; slots on top of `summary-by-category` |
 | **Forecasting / projections** | Needs budgets + recurring + assets | After 1–8 above |
 | **Interest rates on assets** | The app records what *is*, it doesn't simulate what *will be*; banks compute balances | "Advanced" section; a rate field + an accrual generator |
-| **Investment holdings / performance** (quantity × price per fund) | Price feeds, cost basis — a rabbit hole | If ever; allocation (step 4) covers the near-term need |
+| **Investment holdings / performance** (quantity × price per fund) | Price feeds, cost basis — a rabbit hole | If ever; allocation (step 4) covers the near-term need; the geography/sector sub-category drill-down belongs here too (ADR 0009) |
 | **Multi-currency** | Single currency (ADR 0001); investments may strain it | When a real multi-currency asset appears |
 
 ---
@@ -170,5 +213,7 @@ Recurring (step 1) is self-contained and doesn't need assets. Assets (step 2)
 are the foundation for everything money-location related. Net worth (3) and
 allocation (4) are simple derivations over 2. Auth (5) is the prerequisite
 for any multi-user feature (including the bot). Import (7) and the deploy
-(8) are enabling capabilities. The next feature work sits on top of these:
-multi-user bot, then the long-deferred product features as needs appear.
+(8) are enabling capabilities. Item 9 is the current focus: it reshapes the
+asset model before investment tracking starts for real, so later features
+(holdings, forecasting) can build on the right axis. After it: multi-user
+bot, then the long-deferred product features as needs appear.

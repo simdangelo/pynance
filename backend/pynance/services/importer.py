@@ -1,8 +1,8 @@
 """Import transactions, categories and assets from a CSV or Excel file.
 
 Reusable service: reads a file (CSV or Excel), normalizes its rows, and
-creates categories + a default Liquid asset + transactions, all scoped to
-the given user. Used by the /api/import endpoint.
+creates categories + a default current-account asset + transactions, all
+scoped to the given user. Used by the /api/import endpoint.
 
 Parsing is separated from persistence: `_parse_csv`/`_parse_excel` return
 normalized rows with no DB access, so a preview can reuse the exact same
@@ -21,7 +21,10 @@ from sqlalchemy.orm import Session
 from pynance.models.asset import Asset
 from pynance.models.category import Category
 from pynance.models.transaction import Transaction
-from pynance.models.types import AssetType, TransactionType
+from pynance.models.types import AssetClass, TransactionType
+from pynance.services import asset as asset_service
+from pynance.services import bucket as bucket_service
+from pynance.services.exceptions import BucketNotFoundError
 
 TRANSACTIONS_SHEET = "List_of_incomes_expenditures"
 CATEGORIES_SHEET = "conditional_setting (dont see i"
@@ -186,20 +189,29 @@ def _get_or_create_category(
     return category
 
 
-def _get_or_create_liquid(db: Session, user_id: int) -> Asset:
-    existing = db.execute(
-        select(Asset).where(Asset.user_id == user_id, Asset.asset_type == AssetType.LIQUID)
-    ).scalar_one_or_none()
+def _get_or_create_default_asset(db: Session, user_id: int) -> Asset:
+    existing = asset_service.get_default_asset(db, user_id)
     if existing is not None:
         return existing
-    asset = Asset(name=DEFAULT_ASSET_NAME, asset_type=AssetType.LIQUID, user_id=user_id)
+
+    bucket_service.seed_default_buckets(db, user_id)
+    default_bucket = bucket_service.get_default_bucket(db, user_id)
+    if default_bucket is None:
+        raise BucketNotFoundError(f"User {user_id} has no bucket to assign assets to")
+
+    asset = Asset(
+        name=DEFAULT_ASSET_NAME,
+        asset_class=AssetClass.CURRENT_ACCOUNT,
+        bucket_id=default_bucket.id,
+        user_id=user_id,
+    )
     db.add(asset)
     db.flush()
     return asset
 
 
 def _import_rows(db: Session, user_id: int, rows: list[ImportRow]) -> ImportResult:
-    liquid = _get_or_create_liquid(db, user_id)
+    liquid = _get_or_create_default_asset(db, user_id)
     categories_created = 0
     transactions_imported = 0
     skipped = 0

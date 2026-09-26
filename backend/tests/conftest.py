@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from pynance.api.main import app
 from pynance.database import Base, get_db
 from pynance.models.asset import Asset
+from pynance.models.bucket import Bucket
 from pynance.models.category import Category
 from pynance.models.recurring_template import RecurringTemplate
 from pynance.models.session import Session as UserSession
@@ -44,6 +45,7 @@ def db_session(setup_database: Generator[None]) -> Generator[Session]:
     session.execute(delete(RecurringTemplate))
     session.execute(delete(Category))
     session.execute(delete(Asset))
+    session.execute(delete(Bucket))
     session.execute(delete(User))
     session.commit()
     yield session
@@ -77,7 +79,7 @@ def anon_client(db_session: Session) -> Generator[TestClient]:
 
 @pytest.fixture
 def liquid_asset(client: TestClient) -> int:
-    asset = create_asset(client, name="Liquid", asset_type="liquid")
+    asset = create_asset(client, name="Liquid", asset_class="current_account")
     return cast("int", asset["id"])
 
 
@@ -107,16 +109,43 @@ def create_category(client: TestClient, name: str, transaction_type: str) -> dic
     return cast("dict[str, Any]", response.json())
 
 
+def create_bucket(
+    client: TestClient,
+    *,
+    name: str,
+    liquidity_category: str,
+    description: str | None = None,
+    sort_order: int | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"name": name, "liquidity_category": liquidity_category}
+    if description is not None:
+        payload["description"] = description
+    if sort_order is not None:
+        payload["sort_order"] = sort_order
+    response = client.post("/api/buckets", json=payload)
+    assert response.status_code == 201, response.text
+    return cast("dict[str, Any]", response.json())
+
+
 def create_asset(
     client: TestClient,
     *,
     name: str,
-    asset_type: str,
+    asset_class: str,
+    bucket_id: int | None = None,
     opening_balance: str = "0",
 ) -> dict[str, Any]:
+    if bucket_id is None:
+        buckets = client.get("/api/buckets").json()
+        bucket_id = cast("int", buckets[0]["id"])
     response = client.post(
         "/api/assets",
-        json={"name": name, "asset_type": asset_type, "opening_balance": opening_balance},
+        json={
+            "name": name,
+            "asset_class": asset_class,
+            "bucket_id": bucket_id,
+            "opening_balance": opening_balance,
+        },
     )
     assert response.status_code == 201, response.text
     return cast("dict[str, Any]", response.json())
@@ -156,9 +185,9 @@ def create_transaction(
 ) -> dict[str, Any]:
     if asset_id is None:
         assets = client.get("/api/assets").json()
-        liquid = next((a for a in assets if a["asset_type"] == "liquid"), None)
+        liquid = next((a for a in assets if a["liquidity_category"] == "liquid"), None)
         if liquid is None:
-            asset = create_asset(client, name="Liquid", asset_type="liquid")
+            asset = create_asset(client, name="Liquid", asset_class="current_account")
             asset_id = cast("int", asset["id"])
         else:
             asset_id = cast("int", liquid["id"])

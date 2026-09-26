@@ -10,6 +10,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pynance.api.routers import (
     asset,
     auth,
+    bucket,
     category,
     import_data,
     recurring_template,
@@ -113,6 +114,7 @@ app.include_router(
     tags=["recurring-template"],
 )
 app.include_router(asset.router, prefix="/api/assets", tags=["assets"])
+app.include_router(bucket.router, prefix="/api/buckets", tags=["buckets"])
 app.include_router(transfer.router, prefix="/api/transfers", tags=["transfers"])
 app.include_router(telegram.router, prefix="/api/telegram", tags=["telegram"])
 

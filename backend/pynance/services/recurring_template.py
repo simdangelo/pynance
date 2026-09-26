@@ -4,15 +4,15 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from pynance.models.asset import Asset
 from pynance.models.category import Category
 from pynance.models.recurring_template import RecurringTemplate
 from pynance.models.transaction import Transaction
-from pynance.models.types import AssetType, Frequency
+from pynance.models.types import Frequency
 from pynance.schemas.recurring_template import (
     RecurringTemplateCreate,
     RecurringTemplateUpdate,
 )
+from pynance.services import asset as asset_service
 from pynance.services.exceptions import (
     AssetNotFoundError,
     CategoryNotFoundError,
@@ -129,17 +129,9 @@ def generate_next(db: Session, user_id: int, recurring_template_id: int) -> Tran
             f"Next occurrence '{template.next_occurrence}' is not due yet"
         )
 
-    liquid_asset = (
-        db.execute(
-            select(Asset)
-            .where(Asset.asset_type == AssetType.LIQUID, Asset.user_id == user_id)
-            .order_by(Asset.id)
-        )
-        .scalars()
-        .first()
-    )
+    liquid_asset = asset_service.get_default_asset(db, user_id)
     if liquid_asset is None:
-        raise AssetNotFoundError("No default liquid asset exists")
+        raise AssetNotFoundError("No default asset exists")
 
     new_transaction = Transaction(
         amount=template.amount,

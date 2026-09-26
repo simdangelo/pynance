@@ -42,6 +42,27 @@ class AssetInUseError(Exception):
     pass
 
 
+class BucketNotFoundError(Exception):
+    pass
+
+
+class DuplicateBucketNameError(Exception):
+    pass
+
+
+class BucketNotEmptyError(Exception):
+    def __init__(self, bucket_id: int, asset_count: int) -> None:
+        self.bucket_id = bucket_id
+        self.asset_count = asset_count
+        super().__init__(
+            f"Bucket {bucket_id} has {asset_count} asset(s); pass reassign_to or move them first"
+        )
+
+
+class InvalidReassignTargetError(Exception):
+    pass
+
+
 class TransferNotFoundError(Exception):
     pass
 

@@ -4,8 +4,8 @@ from tests.conftest import create_asset, create_transfer
 
 
 def test_create_transfer(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid")
-    savings = create_asset(client, name="Savings", asset_type="savings")
+    checking = create_asset(client, name="Checking", asset_class="current_account")
+    savings = create_asset(client, name="Savings", asset_class="deposit_account")
 
     response = client.post(
         "/api/transfers",
@@ -27,7 +27,7 @@ def test_create_transfer(client: TestClient) -> None:
 
 
 def test_create_transfer_unknown_source_returns_404(client: TestClient) -> None:
-    savings = create_asset(client, name="Savings", asset_type="savings")
+    savings = create_asset(client, name="Savings", asset_class="deposit_account")
 
     response = client.post(
         "/api/transfers",
@@ -44,7 +44,7 @@ def test_create_transfer_unknown_source_returns_404(client: TestClient) -> None:
 
 
 def test_create_transfer_unknown_destination_returns_404(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid")
+    checking = create_asset(client, name="Checking", asset_class="current_account")
 
     response = client.post(
         "/api/transfers",
@@ -61,7 +61,7 @@ def test_create_transfer_unknown_destination_returns_404(client: TestClient) -> 
 
 
 def test_create_transfer_self_transfer_returns_422(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid")
+    checking = create_asset(client, name="Checking", asset_class="current_account")
 
     response = client.post(
         "/api/transfers",
@@ -78,8 +78,8 @@ def test_create_transfer_self_transfer_returns_422(client: TestClient) -> None:
 
 
 def test_list_transfers(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid")
-    savings = create_asset(client, name="Savings", asset_type="savings")
+    checking = create_asset(client, name="Checking", asset_class="current_account")
+    savings = create_asset(client, name="Savings", asset_class="deposit_account")
     create_transfer(
         client,
         source_asset_id=checking["id"],
@@ -105,8 +105,8 @@ def test_list_transfers(client: TestClient) -> None:
 
 
 def test_get_transfer(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid")
-    savings = create_asset(client, name="Savings", asset_type="savings")
+    checking = create_asset(client, name="Checking", asset_class="current_account")
+    savings = create_asset(client, name="Savings", asset_class="deposit_account")
     transfer = create_transfer(
         client,
         source_asset_id=checking["id"],
@@ -129,8 +129,8 @@ def test_get_transfer_not_found_returns_404(client: TestClient) -> None:
 
 
 def test_update_transfer_amount_partial(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid")
-    savings = create_asset(client, name="Savings", asset_type="savings")
+    checking = create_asset(client, name="Checking", asset_class="current_account")
+    savings = create_asset(client, name="Savings", asset_class="deposit_account")
     transfer = create_transfer(
         client,
         source_asset_id=checking["id"],
@@ -147,9 +147,9 @@ def test_update_transfer_amount_partial(client: TestClient) -> None:
 
 
 def test_update_transfer_changes_asset(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid")
-    savings = create_asset(client, name="Savings", asset_type="savings")
-    etf = create_asset(client, name="ETF", asset_type="etf")
+    checking = create_asset(client, name="Checking", asset_class="current_account")
+    savings = create_asset(client, name="Savings", asset_class="deposit_account")
+    etf = create_asset(client, name="ETF", asset_class="equity_etf")
     transfer = create_transfer(
         client,
         source_asset_id=checking["id"],
@@ -168,8 +168,8 @@ def test_update_transfer_changes_asset(client: TestClient) -> None:
 
 
 def test_update_transfer_self_transfer_returns_422(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid")
-    savings = create_asset(client, name="Savings", asset_type="savings")
+    checking = create_asset(client, name="Checking", asset_class="current_account")
+    savings = create_asset(client, name="Savings", asset_class="deposit_account")
     transfer = create_transfer(
         client,
         source_asset_id=checking["id"],
@@ -193,8 +193,8 @@ def test_update_transfer_not_found_returns_404(client: TestClient) -> None:
 
 
 def test_delete_transfer(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid")
-    savings = create_asset(client, name="Savings", asset_type="savings")
+    checking = create_asset(client, name="Checking", asset_class="current_account")
+    savings = create_asset(client, name="Savings", asset_class="deposit_account")
     transfer = create_transfer(
         client,
         source_asset_id=checking["id"],

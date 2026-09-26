@@ -13,7 +13,19 @@ class Frequency(StrEnum):
     CUSTOM = auto()
 
 
-class AssetType(StrEnum):
+class LiquidityCategory(StrEnum):
     LIQUID = auto()
-    SAVINGS = auto()
-    ETF = auto()
+    RESERVE = auto()
+    INVESTED = auto()
+
+
+class AssetClass(StrEnum):
+    CURRENT_ACCOUNT = auto()
+    DEPOSIT_ACCOUNT = auto()
+    MONEY_MARKET_ETF = auto()
+    GOVERNMENT_BOND = auto()
+    CORPORATE_BOND = auto()
+    BOND_ETF = auto()
+    EQUITY_ETF = auto()
+    STOCK = auto()
+    OTHER = auto()

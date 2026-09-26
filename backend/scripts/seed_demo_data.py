@@ -20,7 +20,8 @@ from sqlalchemy.orm import Session as OrmSession
 from pynance.database import Base, SessionLocal
 from pynance.models import (
     Asset,
-    AssetType,
+    AssetClass,
+    Bucket,
     Category,
     LinkCode,
     RecurringTemplate,
@@ -34,6 +35,7 @@ from pynance.models import (
 from pynance.models.types import Frequency
 from pynance.schemas.transaction import TransactionCreate
 from pynance.schemas.transfer import TransferCreate
+from pynance.services import bucket as bucket_service
 from pynance.services import transaction as transaction_service
 from pynance.services import transfer as transfer_service
 from pynance.services.security import hash_password
@@ -57,6 +59,7 @@ def clean_all(db: OrmSession) -> None:
         Transaction,
         Session,
         Asset,
+        Bucket,
         Category,
         User,
     )
@@ -105,16 +108,25 @@ def create_categories(db: OrmSession, user: User) -> dict[str, Category]:
     return categories
 
 
-def create_assets(db: OrmSession, user: User) -> dict[str, Asset]:
+def create_buckets(db: OrmSession, user: User) -> dict[str, Bucket]:
+    """Default buckets; the demo user is created directly, not via register."""
+    return {bucket.name: bucket for bucket in bucket_service.seed_default_buckets(db, user.id)}
+
+
+def create_assets(db: OrmSession, user: User, buckets: dict[str, Bucket]) -> dict[str, Asset]:
     specs = [
-        ("Conto Corrente", AssetType.LIQUID),
-        ("Conto Risparmio", AssetType.SAVINGS),
-        ("ETF MSCI World", AssetType.ETF),
+        ("Conto Corrente", AssetClass.CURRENT_ACCOUNT, "Liquidità quotidiana"),
+        ("Conto Risparmio", AssetClass.DEPOSIT_ACCOUNT, "Fondo di emergenza"),
+        ("ETF MSCI World", AssetClass.EQUITY_ETF, "Investimenti"),
     ]
     assets: dict[str, Asset] = {}
-    for name, asset_type in specs:
+    for name, asset_class, bucket_name in specs:
         asset = Asset(
-            name=name, asset_type=asset_type, user_id=user.id, opening_balance=Decimal("0")
+            name=name,
+            asset_class=asset_class,
+            bucket_id=buckets[bucket_name].id,
+            user_id=user.id,
+            opening_balance=Decimal("0"),
         )
         db.add(asset)
         assets[name] = asset
@@ -257,7 +269,8 @@ def seed(db: OrmSession) -> None:
     clean_all(db)
     user = create_demo_user(db)
     categories = create_categories(db, user)
-    assets = create_assets(db, user)
+    buckets = create_buckets(db, user)
+    assets = create_assets(db, user, buckets)
 
     y, m = START_DATE.year, START_DATE.month
     created = 0

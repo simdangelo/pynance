@@ -4,19 +4,30 @@ from decimal import Decimal
 
 from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from pynance.models.asset import Asset
+from pynance.models.bucket import Bucket
 from pynance.models.category import Category
 from pynance.models.transaction import Transaction
 from pynance.models.transfer import Transfer
-from pynance.models.types import TransactionType
+from pynance.models.types import AssetClass, LiquidityCategory, TransactionType
 from pynance.schemas.asset import AssetCreate, AssetUpdate
 from pynance.services.exceptions import (
     AssetInUseError,
     AssetNotFoundError,
+    BucketNotFoundError,
     DuplicateAssetNameError,
 )
+
+
+def _validate_bucket(db: Session, user_id: int, bucket_id: int) -> Bucket:
+    bucket = db.execute(
+        select(Bucket).where(Bucket.id == bucket_id, Bucket.user_id == user_id)
+    ).scalar_one_or_none()
+    if not bucket:
+        raise BucketNotFoundError(f"Bucket with id {bucket_id} doesn't exist")
+    return bucket
 
 
 def create_asset(db: Session, user_id: int, asset: AssetCreate) -> Asset:
@@ -26,9 +37,12 @@ def create_asset(db: Session, user_id: int, asset: AssetCreate) -> Asset:
     if existing_asset:
         raise DuplicateAssetNameError(f"Asset with name {asset.name} already exists")
 
+    _validate_bucket(db, user_id, asset.bucket_id)
+
     new_asset = Asset(
         name=asset.name,
-        asset_type=asset.asset_type,
+        asset_class=asset.asset_class,
+        bucket_id=asset.bucket_id,
         opening_balance=asset.opening_balance,
         user_id=user_id,
     )
@@ -40,7 +54,9 @@ def create_asset(db: Session, user_id: int, asset: AssetCreate) -> Asset:
 
 def get_asset(db: Session, user_id: int, asset_id: int) -> Asset:
     asset = db.execute(
-        select(Asset).where(Asset.id == asset_id, Asset.user_id == user_id)
+        select(Asset)
+        .where(Asset.id == asset_id, Asset.user_id == user_id)
+        .options(selectinload(Asset.bucket))
     ).scalar_one_or_none()
     if not asset:
         raise AssetNotFoundError(f"Asset with id {asset_id} doesn't exist")
@@ -49,10 +65,41 @@ def get_asset(db: Session, user_id: int, asset_id: int) -> Asset:
 
 def list_assets(db: Session, user_id: int) -> list[Asset]:
     return list(
-        db.execute(select(Asset).where(Asset.user_id == user_id).order_by(Asset.name))
+        db.execute(
+            select(Asset)
+            .where(Asset.user_id == user_id)
+            .options(selectinload(Asset.bucket))
+            .order_by(Asset.name)
+        )
         .scalars()
         .all()
     )
+
+
+def get_default_asset(db: Session, user_id: int) -> Asset | None:
+    """The asset a quick entry (bot, recurring, import) attaches to.
+
+    First asset of the first LIQUID bucket, falling back to the first
+    current-account asset.
+    """
+    asset = db.execute(
+        select(Asset)
+        .join(Bucket, Asset.bucket_id == Bucket.id)
+        .where(Asset.user_id == user_id, Bucket.liquidity_category == LiquidityCategory.LIQUID)
+        .options(selectinload(Asset.bucket))
+        .order_by(Bucket.sort_order, Asset.id)
+        .limit(1)
+    ).scalar_one_or_none()
+    if asset is not None:
+        return asset
+
+    return db.execute(
+        select(Asset)
+        .where(Asset.user_id == user_id, Asset.asset_class == AssetClass.CURRENT_ACCOUNT)
+        .options(selectinload(Asset.bucket))
+        .order_by(Asset.id)
+        .limit(1)
+    ).scalar_one_or_none()
 
 
 def update_asset(db: Session, user_id: int, asset_id: int, update: AssetUpdate) -> Asset:
@@ -64,6 +111,9 @@ def update_asset(db: Session, user_id: int, asset_id: int, update: AssetUpdate) 
         ).scalar_one_or_none()
         if existing_asset:
             raise DuplicateAssetNameError(f"Asset with name {update.name} already exists")
+
+    if update.bucket_id is not None and update.bucket_id != asset.bucket_id:
+        _validate_bucket(db, user_id, update.bucket_id)
 
     for field_to_update, value in update.model_dump(exclude_unset=True).items():
         setattr(asset, field_to_update, value)
@@ -243,3 +293,71 @@ def get_net_worth_trend(
         year, month = _shift_month(year, month)
 
     return points
+
+
+@dataclass(frozen=True)
+class LiquidityAllocationRow:
+    liquidity_category: LiquidityCategory
+    total: Decimal
+
+
+@dataclass(frozen=True)
+class BucketAllocationRow:
+    bucket_id: int
+    bucket_name: str
+    liquidity_category: LiquidityCategory
+    total: Decimal
+
+
+@dataclass(frozen=True)
+class Allocation:
+    by_liquidity: list[LiquidityAllocationRow]
+    by_bucket: list[BucketAllocationRow]
+
+
+def get_allocation(db: Session, user_id: int) -> Allocation:
+    """Current snapshot of balances grouped by liquidity and by bucket.
+
+    Reuses the canonical balance computation and groups in Python, so the
+    balance formula is not duplicated in SQL.
+    """
+    assets = list_assets(db, user_id)
+    balances = get_asset_balances(db, user_id)
+    buckets = list(
+        db.execute(
+            select(Bucket).where(Bucket.user_id == user_id).order_by(Bucket.sort_order, Bucket.name)
+        )
+        .scalars()
+        .all()
+    )
+
+    liquidity_totals: dict[LiquidityCategory, Decimal] = {
+        category: Decimal("0.00") for category in LiquidityCategory
+    }
+    bucket_totals: dict[int, Decimal] = {}
+
+    for asset in assets:
+        amount = balances.get(asset.id, Decimal("0.00"))
+        liquidity_totals[asset.liquidity_category] += amount
+        bucket_totals[asset.bucket_id] = (
+            bucket_totals.get(asset.bucket_id, Decimal("0.00")) + amount
+        )
+
+    by_liquidity = [
+        LiquidityAllocationRow(category, liquidity_totals[category])
+        for category in (
+            LiquidityCategory.LIQUID,
+            LiquidityCategory.RESERVE,
+            LiquidityCategory.INVESTED,
+        )
+    ]
+    by_bucket = [
+        BucketAllocationRow(
+            bucket_id=bucket.id,
+            bucket_name=bucket.name,
+            liquidity_category=bucket.liquidity_category,
+            total=bucket_totals.get(bucket.id, Decimal("0.00")),
+        )
+        for bucket in buckets
+    ]
+    return Allocation(by_liquidity=by_liquidity, by_bucket=by_bucket)

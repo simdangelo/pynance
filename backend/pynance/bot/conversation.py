@@ -8,10 +8,10 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from pynance.database import SessionLocal
-from pynance.models.asset import Asset
 from pynance.models.category import Category
-from pynance.models.types import AssetType, TransactionType
+from pynance.models.types import TransactionType
 from pynance.schemas.transaction import TransactionCreate
+from pynance.services import asset as asset_service
 from pynance.services import category as category_service
 from pynance.services import transaction as transaction_service
 from pynance.services.exceptions import AssetNotFoundError, CategoryNotFoundError, NotLinkedError
@@ -199,18 +199,10 @@ async def confirm_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 
 def _default_asset_id(session: Session, user_id: int) -> int:
-    liquid = (
-        session.execute(
-            select(Asset)
-            .where(Asset.asset_type == AssetType.LIQUID, Asset.user_id == user_id)
-            .order_by(Asset.id)
-        )
-        .scalars()
-        .first()
-    )
-    if liquid is None:
-        raise AssetNotFoundError("No Liquid asset exists")
-    return liquid.id
+    asset = asset_service.get_default_asset(session, user_id)
+    if asset is None:
+        raise AssetNotFoundError("No default asset exists")
+    return asset.id
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

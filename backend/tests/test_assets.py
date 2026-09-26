@@ -6,43 +6,105 @@ from tests.conftest import create_asset, create_category, create_transaction, cr
 
 
 def test_create_asset(client: TestClient) -> None:
+    bucket_id = client.get("/api/buckets").json()[0]["id"]
     response = client.post(
         "/api/assets",
-        json={"name": "Checking", "asset_type": "liquid", "opening_balance": "100.00"},
+        json={
+            "name": "Checking",
+            "asset_class": "current_account",
+            "bucket_id": bucket_id,
+            "opening_balance": "100.00",
+        },
     )
 
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "Checking"
-    assert data["asset_type"] == "liquid"
+    assert data["asset_class"] == "current_account"
+    assert data["bucket_id"] == bucket_id
+    assert data["liquidity_category"] == "liquid"
     assert data["opening_balance"] == "100.00"
     assert data["balance"] == "100.00"
     assert data["id"] > 0
 
 
-def test_create_asset_without_opening_balance_defaults_to_zero(client: TestClient) -> None:
+def test_create_asset_without_opening_balance_returns_422(client: TestClient) -> None:
+    bucket_id = client.get("/api/buckets").json()[0]["id"]
     response = client.post(
         "/api/assets",
-        json={"name": "Checking", "asset_type": "liquid"},
+        json={"name": "Checking", "asset_class": "current_account", "bucket_id": bucket_id},
     )
 
     assert response.status_code == 422
 
 
 def test_create_asset_duplicate_name_returns_409(client: TestClient) -> None:
-    create_asset(client, name="Checking", asset_type="liquid")
+    create_asset(client, name="Checking", asset_class="current_account")
+    bucket_id = client.get("/api/buckets").json()[0]["id"]
 
     response = client.post(
         "/api/assets",
-        json={"name": "Checking", "asset_type": "savings", "opening_balance": "0"},
+        json={
+            "name": "Checking",
+            "asset_class": "deposit_account",
+            "bucket_id": bucket_id,
+            "opening_balance": "0",
+        },
     )
 
     assert response.status_code == 409
 
 
+def test_create_asset_without_bucket_returns_422(client: TestClient) -> None:
+    response = client.post(
+        "/api/assets",
+        json={"name": "Checking", "asset_class": "current_account", "opening_balance": "0"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_asset_with_unknown_bucket_returns_404(client: TestClient) -> None:
+    response = client.post(
+        "/api/assets",
+        json={
+            "name": "Checking",
+            "asset_class": "current_account",
+            "bucket_id": 9999,
+            "opening_balance": "0",
+        },
+    )
+
+    assert response.status_code == 404
+
+
+def test_create_asset_with_removed_class_returns_422(client: TestClient) -> None:
+    bucket_id = client.get("/api/buckets").json()[0]["id"]
+
+    response = client.post(
+        "/api/assets",
+        json={
+            "name": "Wallet",
+            "asset_class": "cash",
+            "bucket_id": bucket_id,
+            "opening_balance": "0",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_asset_with_unknown_bucket_returns_404(client: TestClient) -> None:
+    asset = create_asset(client, name="Checking", asset_class="current_account")
+
+    response = client.patch(f"/api/assets/{asset['id']}", json={"bucket_id": 9999})
+
+    assert response.status_code == 404
+
+
 def test_list_assets(client: TestClient) -> None:
-    create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
-    create_asset(client, name="Savings", asset_type="savings", opening_balance="50.00")
+    create_asset(client, name="Checking", asset_class="current_account", opening_balance="100.00")
+    create_asset(client, name="Savings", asset_class="deposit_account", opening_balance="50.00")
 
     response = client.get("/api/assets")
 
@@ -55,7 +117,9 @@ def test_list_assets(client: TestClient) -> None:
 
 
 def test_get_asset(client: TestClient) -> None:
-    asset = create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
+    asset = create_asset(
+        client, name="Checking", asset_class="current_account", opening_balance="100.00"
+    )
 
     response = client.get(f"/api/assets/{asset['id']}")
 
@@ -70,7 +134,9 @@ def test_get_asset_not_found_returns_404(client: TestClient) -> None:
 
 
 def test_update_asset(client: TestClient) -> None:
-    asset = create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
+    asset = create_asset(
+        client, name="Checking", asset_class="current_account", opening_balance="100.00"
+    )
 
     response = client.patch(
         f"/api/assets/{asset['id']}",
@@ -85,8 +151,8 @@ def test_update_asset(client: TestClient) -> None:
 
 
 def test_update_asset_duplicate_name_returns_409(client: TestClient) -> None:
-    create_asset(client, name="Checking", asset_type="liquid")
-    savings = create_asset(client, name="Savings", asset_type="savings")
+    create_asset(client, name="Checking", asset_class="current_account")
+    savings = create_asset(client, name="Savings", asset_class="deposit_account")
 
     response = client.patch(
         f"/api/assets/{savings['id']}",
@@ -103,7 +169,7 @@ def test_update_asset_not_found_returns_404(client: TestClient) -> None:
 
 
 def test_delete_asset(client: TestClient) -> None:
-    asset = create_asset(client, name="Checking", asset_type="liquid")
+    asset = create_asset(client, name="Checking", asset_class="current_account")
 
     response = client.delete(f"/api/assets/{asset['id']}")
 
@@ -113,7 +179,7 @@ def test_delete_asset(client: TestClient) -> None:
 
 def test_delete_asset_with_transactions_returns_409(client: TestClient) -> None:
     category = create_category(client, "groceries", "expense")
-    asset = create_asset(client, name="Checking", asset_type="liquid")
+    asset = create_asset(client, name="Checking", asset_class="current_account")
     create_transaction(
         client,
         amount="10.00",
@@ -129,8 +195,8 @@ def test_delete_asset_with_transactions_returns_409(client: TestClient) -> None:
 
 
 def test_delete_asset_with_transfers_returns_409(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid")
-    savings = create_asset(client, name="Savings", asset_type="savings")
+    checking = create_asset(client, name="Checking", asset_class="current_account")
+    savings = create_asset(client, name="Savings", asset_class="deposit_account")
     create_transfer(
         client,
         source_asset_id=checking["id"],
@@ -148,7 +214,9 @@ def test_delete_asset_with_transfers_returns_409(client: TestClient) -> None:
 def test_balance_includes_opening_balance_and_transactions(client: TestClient) -> None:
     category = create_category(client, "groceries", "expense")
     salary = create_category(client, "salary", "income")
-    asset = create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
+    asset = create_asset(
+        client, name="Checking", asset_class="current_account", opening_balance="100.00"
+    )
     create_transaction(
         client,
         amount="30.00",
@@ -173,8 +241,12 @@ def test_balance_includes_opening_balance_and_transactions(client: TestClient) -
 
 
 def test_balance_includes_transfers(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
-    savings = create_asset(client, name="Savings", asset_type="savings", opening_balance="0")
+    checking = create_asset(
+        client, name="Checking", asset_class="current_account", opening_balance="100.00"
+    )
+    savings = create_asset(
+        client, name="Savings", asset_class="deposit_account", opening_balance="0"
+    )
     create_transfer(
         client,
         source_asset_id=checking["id"],
@@ -191,8 +263,12 @@ def test_balance_includes_transfers(client: TestClient) -> None:
 
 
 def test_net_worth_unchanged_by_transfer(client: TestClient) -> None:
-    checking = create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
-    savings = create_asset(client, name="Savings", asset_type="savings", opening_balance="0")
+    checking = create_asset(
+        client, name="Checking", asset_class="current_account", opening_balance="100.00"
+    )
+    savings = create_asset(
+        client, name="Savings", asset_class="deposit_account", opening_balance="0"
+    )
 
     before = client.get("/api/assets").json()
     before_total = sum(Decimal(asset["balance"]) for asset in before)
@@ -213,7 +289,7 @@ def test_net_worth_unchanged_by_transfer(client: TestClient) -> None:
 
 
 def test_asset_without_transactions_still_shows_opening_balance(client: TestClient) -> None:
-    create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
+    create_asset(client, name="Checking", asset_class="current_account", opening_balance="100.00")
 
     assets = client.get("/api/assets").json()
 
@@ -223,8 +299,8 @@ def test_asset_without_transactions_still_shows_opening_balance(client: TestClie
 def test_net_worth_trend_cumulates_over_months(client: TestClient) -> None:
     category = create_category(client, "groceries", "expense")
     salary = create_category(client, "salary", "income")
-    create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
-    create_asset(client, name="Savings", asset_type="savings", opening_balance="50.00")
+    create_asset(client, name="Checking", asset_class="current_account", opening_balance="100.00")
+    create_asset(client, name="Savings", asset_class="deposit_account", opening_balance="50.00")
     create_transaction(
         client,
         amount="30.00",
@@ -263,7 +339,7 @@ def test_net_worth_trend_cumulates_over_months(client: TestClient) -> None:
 
 def test_net_worth_trend_includes_transactions_before_range(client: TestClient) -> None:
     category = create_category(client, "groceries", "expense")
-    create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
+    create_asset(client, name="Checking", asset_class="current_account", opening_balance="100.00")
     create_transaction(
         client,
         amount="30.00",
@@ -282,8 +358,12 @@ def test_net_worth_trend_includes_transactions_before_range(client: TestClient) 
 
 def test_net_worth_trend_ignores_transfers(client: TestClient) -> None:
     category = create_category(client, "groceries", "expense")
-    checking = create_asset(client, name="Checking", asset_type="liquid", opening_balance="100.00")
-    savings = create_asset(client, name="Savings", asset_type="savings", opening_balance="0")
+    checking = create_asset(
+        client, name="Checking", asset_class="current_account", opening_balance="100.00"
+    )
+    savings = create_asset(
+        client, name="Savings", asset_class="deposit_account", opening_balance="0"
+    )
     create_transfer(
         client,
         source_asset_id=checking["id"],

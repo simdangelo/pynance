@@ -8,10 +8,10 @@ import OverviewCashFlow from "@/pages/overview-cash-flow"
 import Transactions from "@/pages/transactions"
 import Recurring from "@/pages/recurring"
 import Assets from "@/pages/assets"
-import Transfers from "@/pages/transfers"
 import Categories from "@/pages/categories"
 import ImportData from "@/pages/import"
-import Account from "@/pages/account"
+import Reports from "@/pages/reports"
+import Settings from "@/pages/settings"
 
 function AppRoutes() {
   return (
@@ -25,10 +25,12 @@ function AppRoutes() {
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/recurring" element={<Recurring />} />
         <Route path="/assets" element={<Assets />} />
-        <Route path="/transfers" element={<Transfers />} />
+        <Route path="/reports" element={<Reports />} />
         <Route path="/import" element={<ImportData />} />
         <Route path="/categories" element={<Categories />} />
-        <Route path="/account" element={<Account />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/transfers" element={<Navigate to="/assets" replace />} />
+        <Route path="/account" element={<Navigate to="/settings" replace />} />
         <Route path="*" element={<Navigate to="/overview" replace />} />
       </Route>
     </Routes>

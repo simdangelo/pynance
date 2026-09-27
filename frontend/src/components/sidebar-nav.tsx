@@ -1,130 +1,148 @@
 import { NavLink } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import {
-  ArrowRightLeft,
+  ChartColumn,
   FileUp,
-  LayoutDashboard,
   Landmark,
-  LogOut,
+  LayoutDashboard,
   Receipt,
   Repeat,
-  Settings,
-  UserRound,
+  Tags,
+  type LucideIcon,
 } from "lucide-react"
 
-import { useAuth } from "@/lib/auth"
 import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 
-const NAV_ITEMS = [
-  { to: "/overview", label: "Overview", icon: LayoutDashboard },
+interface NavItem {
+  to: string
+  label: string
+  icon: LucideIcon
+}
+
+const MAIN_ITEMS: NavItem[] = [
+  { to: "/overview", label: "Dashboard", icon: LayoutDashboard },
   { to: "/transactions", label: "Transactions", icon: Receipt },
-  { to: "/recurring", label: "Recurring", icon: Repeat },
   { to: "/assets", label: "Assets", icon: Landmark },
-  { to: "/transfers", label: "Transfers", icon: ArrowRightLeft },
-] as const
+  { to: "/recurring", label: "Recurring", icon: Repeat },
+  { to: "/reports", label: "Reports", icon: ChartColumn },
+]
 
-const FOOTER_ITEMS = [
+const MANAGE_ITEMS: NavItem[] = [
+  { to: "/categories", label: "Categories", icon: Tags },
   { to: "/import", label: "Import", icon: FileUp },
-  { to: "/categories", label: "Categories", icon: Settings },
-] as const
+]
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+interface SidebarNavProps {
+  expanded?: boolean
+  onNavigate?: () => void
+}
+
+/**
+ * Renders based on `expanded` only through opacity, never through spacing:
+ * item height, padding and icon slot are identical in both states, so icons
+ * keep exactly the same position while the sidebar animates its width.
+ */
+function SidebarLink({
+  item,
+  expanded,
+  onNavigate,
+  count,
+}: {
+  item: NavItem
+  expanded: boolean
+  onNavigate?: () => void
+  count?: number
+}) {
+  const Icon = item.icon
+  const showCount = count !== undefined && count > 0
+
+  return (
+    <NavLink
+      to={item.to}
+      onClick={onNavigate}
+      title={expanded ? undefined : item.label}
+      className={({ isActive }) =>
+        cn(
+          "relative flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors",
+          isActive
+            ? "bg-primary-soft text-primary"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        )
+      }
+    >
+      <Icon className="size-[18px] shrink-0" />
+      <span
+        className={cn(
+          "truncate transition-opacity duration-150",
+          expanded ? "opacity-100" : "opacity-0",
+        )}
+      >
+        {item.label}
+      </span>
+      {showCount && (
+        <>
+          <Badge
+            className={cn(
+              "ml-auto bg-primary-soft text-primary transition-opacity duration-150",
+              expanded ? "opacity-100" : "opacity-0",
+            )}
+          >
+            {count}
+          </Badge>
+          <span
+            className={cn(
+              "absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary transition-opacity duration-150",
+              expanded ? "opacity-0" : "opacity-100",
+            )}
+          />
+        </>
+      )}
+    </NavLink>
+  )
+}
+
+export function SidebarNav({ expanded = true, onNavigate }: SidebarNavProps) {
   const { data: templates } = useQuery({
     queryKey: ["recurring"],
     queryFn: api.recurringTemplates.list,
   })
-  const { user, logout } = useAuth()
 
   const dueCount = (templates ?? []).filter((t) => t.active && t.due).length
 
   return (
-    <nav className="flex flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-0.5 p-3">
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon
-          const showBadge = item.to === "/recurring" && dueCount > 0
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
-                )
-              }
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span>{item.label}</span>
-              {showBadge && (
-                <Badge
-                  variant="secondary"
-                  className="ml-auto bg-ochre/10 text-ochre"
-                >
-                  {dueCount}
-                </Badge>
-              )}
-            </NavLink>
-          )
-        })}
+    <nav className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto p-3">
+      <div className="flex w-full flex-col gap-0.5">
+        {MAIN_ITEMS.map((item) => (
+          <SidebarLink
+            key={item.to}
+            item={item}
+            expanded={expanded}
+            onNavigate={onNavigate}
+            count={item.to === "/recurring" ? dueCount : undefined}
+          />
+        ))}
       </div>
-      <div className="border-t border-border p-3">
-        {FOOTER_ITEMS.map((item) => {
-          const Icon = item.icon
-          return (
-            <NavLink
+
+      <div className="mt-4 w-full">
+        <span
+          className={cn(
+            "block px-3 pb-1.5 text-[11px] font-semibold tracking-[0.06em] whitespace-nowrap text-faint-foreground uppercase transition-opacity duration-150",
+            expanded ? "opacity-100" : "opacity-0",
+          )}
+        >
+          Manage
+        </span>
+        <div className="flex w-full flex-col gap-0.5">
+          {MANAGE_ITEMS.map((item) => (
+            <SidebarLink
               key={item.to}
-              to={item.to}
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors",
-                  isActive
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground/70 hover:bg-secondary/50 hover:text-foreground",
-                )
-              }
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span>{item.label}</span>
-            </NavLink>
-          )
-        })}
-        <div className="mt-3 border-t border-border pt-3">
-          <NavLink
-            to="/account"
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors",
-                isActive
-                  ? "bg-secondary text-foreground"
-                  : "text-muted-foreground/70 hover:bg-secondary/50 hover:text-foreground",
-              )
-            }
-          >
-            <UserRound className="h-4 w-4 shrink-0" />
-            <span>Account</span>
-          </NavLink>
-        </div>
-        <div className="mt-3 border-t border-border pt-3">
-          <div className="flex items-center justify-between gap-2 px-3">
-            <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Log out"
-              onClick={() => void logout()}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
+              item={item}
+              expanded={expanded}
+              onNavigate={onNavigate}
+            />
+          ))}
         </div>
       </div>
     </nav>

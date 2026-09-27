@@ -18,9 +18,32 @@ import { BucketDialog } from "@/components/bucket-dialog"
 import { BucketDeleteDialog } from "@/components/bucket-delete-dialog"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { EmptyState } from "@/components/empty-state"
+import { Segmented } from "@/components/segmented"
 import { Button } from "@/components/ui/button"
+import Transfers from "@/pages/transfers"
+
+type AssetsTab = "accounts" | "transfers"
 
 export default function Assets() {
+  const [tab, setTab] = useState<AssetsTab>("accounts")
+
+  return (
+    <div className="space-y-5">
+      <Segmented
+        size="md"
+        value={tab}
+        onChange={(value) => setTab(value as AssetsTab)}
+        options={[
+          { value: "accounts", label: "Accounts" },
+          { value: "transfers", label: "Transfers" },
+        ]}
+      />
+      {tab === "transfers" ? <Transfers /> : <AccountsPanel />}
+    </div>
+  )
+}
+
+function AccountsPanel() {
   const queryClient = useQueryClient()
   const [assetDialogOpen, setAssetDialogOpen] = useState(false)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
@@ -129,7 +152,7 @@ export default function Assets() {
   }
 
   return (
-    <div className="space-y-5">
+    <>
       {/* Actions */}
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button variant="outline" onClick={openCreateBucket}>
@@ -345,6 +368,6 @@ export default function Assets() {
         }
         onConfirm={() => deleteAssetTarget && deleteAssetMutation.mutate(deleteAssetTarget.id)}
       />
-    </div>
+    </>
   )
 }

@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function Account() {
+export default function Settings() {
   const [code, setCode] = useState<string | null>(null)
 
   const linkCode = useMutation({
@@ -24,7 +24,7 @@ export default function Account() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Account" subtitle="Impostazioni del tuo account." />
+      <PageHeader title="Settings" subtitle="Account e preferenze." />
 
       <Card>
         <CardHeader>

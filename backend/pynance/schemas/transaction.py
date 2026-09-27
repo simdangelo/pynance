@@ -71,3 +71,11 @@ class TrendByCategoryResponse(BaseModel):
 class ComparisonResponse(BaseModel):
     current: SummaryResponse
     previous: SummaryResponse
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: list[int]
+
+
+class BulkDeleteResponse(BaseModel):
+    deleted: int

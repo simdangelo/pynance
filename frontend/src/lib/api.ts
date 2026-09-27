@@ -6,8 +6,9 @@ import type {
   BucketInput,
   Category,
   Comparison,
+  ImportCommitResult,
+  ImportMapping,
   ImportPreview,
-  ImportResult,
   NetWorthTrendPoint,
   RecurringTemplate,
   RecurringTemplateInput,
@@ -63,6 +64,42 @@ function toQueryString(params: Record<string, string | number | undefined>): str
   return qs ? `?${qs}` : ""
 }
 
+interface ImportPreviewConfig {
+  mapping?: ImportMapping | null
+  dateFormat?: string
+  sheet?: string | null
+  delimiter?: string | null
+  assetId?: number | null
+}
+
+interface ImportCommitConfig {
+  assetId: number
+  selectedIndexes: number[]
+  rowCategories: { index: number; category_id: number }[]
+  mapping?: ImportMapping | null
+  dateFormat?: string
+  sheet?: string | null
+  delimiter?: string | null
+}
+
+function importFormData(
+  file: File,
+  config: ImportPreviewConfig | ImportCommitConfig,
+): FormData {
+  const formData = new FormData()
+  formData.append("file", file)
+  if (config.mapping) formData.append("mapping", JSON.stringify(config.mapping))
+  if (config.dateFormat) formData.append("date_format", config.dateFormat)
+  if (config.sheet) formData.append("sheet", config.sheet)
+  if (config.delimiter) formData.append("delimiter", config.delimiter)
+  if (config.assetId != null) formData.append("asset_id", String(config.assetId))
+  if ("selectedIndexes" in config) {
+    formData.append("selected_indexes", JSON.stringify(config.selectedIndexes))
+    formData.append("row_categories", JSON.stringify(config.rowCategories))
+  }
+  return formData
+}
+
 export const api = {
   auth: {
     register: (data: { email: string; password: string }) =>
@@ -79,24 +116,18 @@ export const api = {
     me: () => request<User>("/api/auth/me"),
   },
   importData: {
-    upload: (file: File) => {
-      const formData = new FormData()
-      formData.append("file", file)
-      return request<ImportResult>("/api/import", {
+    preview: (file: File, config: ImportPreviewConfig = {}) =>
+      request<ImportPreview>("/api/import/preview", {
         method: "POST",
-        body: formData,
+        body: importFormData(file, config),
         headers: {},
-      })
-    },
-    preview: (file: File) => {
-      const formData = new FormData()
-      formData.append("file", file)
-      return request<ImportPreview>("/api/import/preview", {
+      }),
+    commit: (file: File, config: ImportCommitConfig) =>
+      request<ImportCommitResult>("/api/import/commit", {
         method: "POST",
-        body: formData,
+        body: importFormData(file, config),
         headers: {},
-      })
-    },
+      }),
   },
   categories: {
     list: () => request<Category[]>("/api/categories"),
@@ -135,6 +166,11 @@ export const api = {
       }),
     remove: (id: number) =>
       request<void>(`/api/transactions/${id}`, { method: "DELETE" }),
+    bulkDelete: (ids: number[]) =>
+      request<{ deleted: number }>("/api/transactions/bulk-delete", {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      }),
     summary: (year: number, month: number, filters: { category_id?: number; transaction_type?: string } = {}) =>
       request<Summary>(
         `/api/transactions/summary${toQueryString({

@@ -9,6 +9,8 @@ from pynance.database import get_db
 from pynance.models.transaction import Transaction
 from pynance.models.types import TransactionType
 from pynance.schemas.transaction import (
+    BulkDeleteRequest,
+    BulkDeleteResponse,
     ComparisonResponse,
     SummaryByCategoryRowResponse,
     SummaryResponse,
@@ -107,6 +109,16 @@ def get_comparison(
     db: Annotated[Session, Depends(get_db)],
 ) -> transaction_service.Comparison:
     return transaction_service.get_comparison(db, current_user.id, year, month)
+
+
+@router.post("/bulk-delete", response_model=BulkDeleteResponse)
+def bulk_delete_transactions(
+    payload: BulkDeleteRequest,
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> BulkDeleteResponse:
+    deleted = transaction_service.delete_transactions(db, current_user.id, payload.ids)
+    return BulkDeleteResponse(deleted=deleted)
 
 
 @router.get("/{transaction_id}", response_model=TransactionResponse)

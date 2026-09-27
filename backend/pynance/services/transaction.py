@@ -1,8 +1,10 @@
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
+from typing import Any, cast
 
-from sqlalchemy import ColumnElement, and_, func, select
+from sqlalchemy import ColumnElement, and_, delete, func, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload
 
 from pynance.models.asset import Asset
@@ -88,6 +90,23 @@ def delete_transaction(db: Session, user_id: int, transaction_id: int) -> Transa
     db.delete(transaction)
     db.commit()
     return transaction
+
+
+def delete_transactions(db: Session, user_id: int, transaction_ids: list[int]) -> int:
+    """Delete several transactions at once (bulk undo of an import)."""
+    if not transaction_ids:
+        return 0
+    result = cast(
+        "CursorResult[Any]",
+        db.execute(
+            delete(Transaction).where(
+                Transaction.user_id == user_id,
+                Transaction.id.in_(transaction_ids),
+            )
+        ),
+    )
+    db.commit()
+    return int(result.rowcount)
 
 
 @dataclass

@@ -20,22 +20,52 @@ export interface User {
   email: string
 }
 
-export interface ImportResult {
-  categories_created: number
-  transactions_imported: number
-  skipped: number
+export interface ImportMapping {
+  date: string | null
+  description: string | null
+  amount: string | null
+  type: string | null
+  debit: string | null
+  credit: string | null
+  category: string | null
 }
 
-export interface ImportPreviewRow {
-  description: string
-  occurred_on: string
-  transaction_type: TransactionType
-  category: string
-  amount: string
+export type ImportRowStatus = "ok" | "invalid" | "duplicate"
+
+export interface ImportRow {
+  index: number
+  values: Record<string, string>
+  date: string | null
+  description: string | null
+  amount: string | null
+  direction: TransactionType | null
+  category: string | null
+  status: ImportRowStatus
+  reason: string | null
+  duplicate_of: number | null
+}
+
+export interface ImportSummary {
+  total: number
+  ok: number
+  invalid: number
+  duplicate: number
 }
 
 export interface ImportPreview {
-  rows: ImportPreviewRow[]
+  headers: string[]
+  sheets: string[] | null
+  delimiter: string | null
+  encoding: string | null
+  suggested_mapping: ImportMapping
+  rows: ImportRow[]
+  summary: ImportSummary
+}
+
+export interface ImportCommitResult {
+  transaction_ids: number[]
+  imported: number
+  skipped: number
 }
 
 export interface Category {

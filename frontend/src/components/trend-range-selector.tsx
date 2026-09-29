@@ -13,7 +13,6 @@ export function TrendRangeSelector({ value, onChange }: TrendRangeSelectorProps)
   return (
     <Segmented
       size="sm"
-      variant="dark"
       value={value}
       onChange={(range) => onChange(range as TrendRange)}
       options={RANGES.map((range) => ({ value: range, label: range }))}

@@ -32,7 +32,7 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <div className="flex flex-col items-center gap-4 pt-2 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-clay/10 text-clay">
+          <div className="flex size-12 items-center justify-center rounded-full bg-destructive-soft text-destructive">
             <Trash2 className="size-5" />
           </div>
           <DialogHeader className="items-center">

@@ -30,6 +30,8 @@
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
+    --color-row-group: var(--row-group);
+    --color-row-hover: var(--row-hover);
     --color-destructive-soft: var(--destructive-soft);
     --color-destructive: var(--destructive);
     --color-positive-chart: var(--positive-chart);
@@ -91,12 +93,14 @@
     --faint-foreground: #A09F9F;
     --accent: #F0EFEB;
     --accent-foreground: #24211F;
-    --destructive: #B73330;
+    --destructive: #A94440;
     --destructive-soft: #F9E9E7;
-    --positive: #3D832A;
+    --positive: #437B36;
     --positive-soft: #EAF3E7;
     --positive-chart: #53AC7D;
     --border: #EBEAE5;
+    --row-group: #F2F0EB;
+    --row-hover: #F6F5F2;
     --input: #E1E1DE;
     --ring: #ED7240;
     --chart-grid: #EFEEE9;

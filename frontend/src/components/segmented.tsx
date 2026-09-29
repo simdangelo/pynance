@@ -1,12 +1,10 @@
 import type { ReactNode } from "react"
-import { useNavigate } from "react-router-dom"
 
 import { cn } from "@/lib/utils"
 
 interface SegmentedOption {
   value: string
   label: ReactNode
-  href?: string
 }
 
 interface SegmentedProps {
@@ -14,7 +12,6 @@ interface SegmentedProps {
   value: string
   onChange?: (value: string) => void
   size?: "sm" | "md"
-  variant?: "default" | "dark"
   className?: string
 }
 
@@ -23,11 +20,8 @@ export function Segmented({
   value,
   onChange,
   size = "sm",
-  variant = "default",
   className,
 }: SegmentedProps) {
-  const navigate = useNavigate()
-
   return (
     <div
       className={cn(
@@ -42,22 +36,17 @@ export function Segmented({
           <button
             key={option.value}
             type="button"
+            aria-pressed={active}
             onClick={() => {
-              if (option.href) {
-                navigate(option.href)
-              }
               onChange?.(option.value)
             }}
             className={cn(
               "font-medium cursor-pointer whitespace-nowrap text-muted-foreground transition-colors",
               !active && "hover:text-foreground",
               size === "sm"
-                ? "rounded-full px-3 py-1 font-numeric text-xs"
+                ? "rounded-full px-3 py-1 text-[13px]"
                 : "rounded-md px-4 py-1.5 text-sm",
-              active &&
-                (variant === "dark"
-                  ? "bg-foreground text-background"
-                  : "bg-card text-foreground shadow-sm"),
+              active && "bg-card text-foreground shadow-sm ring-1 ring-border",
             )}
           >
             {option.label}

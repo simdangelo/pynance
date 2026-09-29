@@ -21,7 +21,7 @@ export function TypeToggle({ value, onChange }: TypeToggleProps) {
         className={cn(
           itemClass,
           income
-            ? "bg-card text-moss shadow-sm"
+            ? "bg-card text-positive shadow-sm"
             : "text-muted-foreground hover:text-foreground",
         )}
       >
@@ -33,7 +33,7 @@ export function TypeToggle({ value, onChange }: TypeToggleProps) {
         className={cn(
           itemClass,
           !income
-            ? "bg-card text-clay shadow-sm"
+            ? "bg-card text-destructive shadow-sm"
             : "text-muted-foreground hover:text-foreground",
         )}
       >

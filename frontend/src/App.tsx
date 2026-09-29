@@ -2,9 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom"
 import { Layout } from "@/components/layout"
 import { useAuth } from "@/lib/auth"
 import Login from "@/pages/login"
-import Overview from "@/pages/dashboard"
-import OverviewNetWorth from "@/pages/overview-net-worth"
-import OverviewCashFlow from "@/pages/overview-cash-flow"
+import Dashboard from "@/pages/dashboard"
 import Transactions from "@/pages/transactions"
 import Recurring from "@/pages/recurring"
 import Assets from "@/pages/assets"
@@ -17,11 +15,9 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route path="/overview" element={<Overview />}>
-          <Route index element={<Navigate to="net-worth" replace />} />
-          <Route path="net-worth" element={<OverviewNetWorth />} />
-          <Route path="cash-flow" element={<OverviewCashFlow />} />
-        </Route>
+        <Route path="/overview" element={<Dashboard />} />
+        <Route path="/overview/net-worth" element={<Navigate to="/overview" replace />} />
+        <Route path="/overview/cash-flow" element={<Navigate to="/overview" replace />} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/recurring" element={<Recurring />} />
         <Route path="/assets" element={<Assets />} />

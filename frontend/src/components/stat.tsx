@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
+import { StatLabel } from "@/components/stat-label"
 
 interface StatProps {
   label: string
@@ -9,6 +10,7 @@ interface StatProps {
   tone?: "default" | "positive" | "negative" | "attention"
   size?: "sm" | "md" | "lg" | "xl"
   className?: string
+  valueClassName?: string
 }
 
 const sizeClasses = {
@@ -25,19 +27,19 @@ export function Stat({
   tone = "default",
   size = "md",
   className,
+  valueClassName,
 }: StatProps) {
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <span className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground/60 uppercase">
-        {label}
-      </span>
+      <StatLabel>{label}</StatLabel>
       <span
         className={cn(
           "font-numeric font-medium leading-tight tracking-tight",
           sizeClasses[size],
-          tone === "positive" && "text-moss",
-          tone === "negative" && "text-clay",
-          tone === "attention" && "text-ochre",
+          tone === "positive" && "text-positive",
+          tone === "negative" && "text-destructive",
+          tone === "attention" && "text-chart-2",
+          valueClassName,
         )}
       >
         {value}

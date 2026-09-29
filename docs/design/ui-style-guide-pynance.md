@@ -29,8 +29,9 @@ Base calda desaturata: mai nero puro, mai grigio freddo. L'unico colore pieno di
 | `--sidebar` | `#FAF9F7` | Fondo della sidebar (appena più chiaro della pagina) |
 | `--card` / popover | `#FCFCFB` | Card, pannelli, dropdown |
 | superficie bianca | `#FFFFFF` | Input, righe tabella, dialog |
-| `--muted` | `#F0EFEB` | Superfici incassate: segmented container, track barre, hover |
-| banda di gruppo | `#F7F6F3` | Bande data/intestazione di gruppo nelle liste |
+| `--muted` | `#F0EFEB` | Superfici incassate: segmented container, track barre |
+| `--row-group` | `#F2F0EB` | Bande data/intestazione di gruppo nelle liste |
+| `--row-hover` | `#F6F5F2` | Hover delle righe di tabella (tono pagina) |
 | `--foreground` | `#24211F` | Inchiostro primario (seppia-charcoal caldo) |
 | `--muted-foreground` | `#696664` | Testo secondario |
 | `--faint-foreground` | `#A09F9F` | Testo terziario: label, meta, tick assi, placeholder |
@@ -45,10 +46,10 @@ Base calda desaturata: mai nero puro, mai grigio freddo. L'unico colore pieno di
 
 | Token | Hex | Uso |
 |---|---|---|
-| `--positive` | `#3D832A` | Income, stato positivo, badge "Income"/"Active" |
+| `--positive` | `#437B36` | Income, stato positivo, badge "Income"/"Active" |
 | `--positive-soft` | `#EAF3E7` | Tinta verde per badge |
 | `--positive-chart` | `#53AC7D` | Verde più morbido per serie/grafici (flussi) |
-| `--destructive` | `#B73330` | Eccezioni: overdue, "da rivedere", errori, eliminazioni |
+| `--destructive` | `#A94440` | Eccezioni: overdue, "da rivedere", errori, eliminazioni |
 | `--destructive-soft` | `#F9E9E7` | Tinta rossa per badge e bottone destructive |
 
 ### Serie dati (palette categorica)
@@ -74,7 +75,9 @@ Un colore per categoria/serie, indipendente dal segno. Ordine di assegnazione:
 - **Il verde è income/positivo**: badge e testi Income/Active, serie income nei grafici.
 - **I numeri restano in inchiostro**: il segnale di stato è un dot da 6–8px, un badge o un
   segno (`+`/`−`), non un numero colorato. Fanno eccezione i testi esplicitamente semantici
-  ("Overdue", "Uncategorized", "da rivedere"), che usano il rosso.
+  ("Overdue", "Uncategorized", "da rivedere"), che usano il rosso. Nelle **liste di
+  transazioni** gli importi sono colorati (`--positive`/`--destructive`) insieme al segno
+  (vedi § 4 Money).
 - **La palette categorica non è semantica**: serve a distinguere le serie, non a indicare
   buono/cattivo. Income/expense nei grafici cash-flow usano verde/rosso dedicati.
 
@@ -108,8 +111,8 @@ Nota pratica: alla stessa dimensione la mono appare più larga del sans; nei con
 
 | Ruolo | Dimensione | Peso | Colore |
 |---|---|---|---|
-| Titolo pagina | 28–30px | 700 | primario |
-| Numero hero (Overview) | 36–40px | 700 | primario, numerico |
+| Titolo pagina (banda) | 18px | 600 | primario |
+| Numero hero (Overview) | 36–40px | 500 | primario, numerico |
 | Valore KPI / Stat | 28–30px | 700 | primario, numerico |
 | Titolo card/sezione | 16–18px | 600 | primario |
 | Corpo, celle, form | 14–15px | 400 | primario/secondario |
@@ -169,21 +172,31 @@ Regole:
 - Fondo bianco, bordo hairline `--input`, radius 12, `h-9`/`h-10`, 14px.
 - Placeholder e icone in `--faint-foreground`; focus come in § 3.
 - Search con icona a sinistra e eventuale bottone filtro a destra, stessa altezza.
+- Vale anche per `SelectTrigger` e per la variante `outline` dei bottoni: fondo
+  `--card` (non `--background`), così i controlli restano bianchi sul fondo pagina.
 
 ### Card e Stat (`components/stat.tsx`)
 - Card bianca `--card`, radius 16, hairline + ombra soft, padding 16–20.
 - **KPI**: sulla prima riga un **dot colorato 8px** opzionale + label 13px in
   `--muted-foreground`; sotto il valore 28–30px numerico bold; sotto una sub-label 12–13px
   terziaria.
-- Niente label uppercase nei KPI: `Total spending`, non `TOTAL SPENDING`.
+- Niente label uppercase nei KPI: `Total spending`, non `TOTAL SPENDING`
+  (nota: le `Stat` attuali usano ancora label uppercase; decisione rimandata,
+  vedi `docs/tasks/transactions-redesign-frontend.md` § 7).
+- In pagine con pochi KPI correlati (es. In | Out | Net in Transactions) le
+  `Stat` stanno in **una sola Card** separate da hairline verticali (`border-l`
+  sui blocchi della griglia): In e Out occupano la metà sinistra (un quarto
+  ciascuno), Net la metà destra. Sotto `xl` il layout si riorganizza (In/Out
+  affiancati, Net a tutta riga; sotto `sm` impilate), mai numeri sovrapposti o
+  tagliati.
 - Card di contenuto: titolo 16–18px/600, descrizione 14px secondaria, poi contenuto.
 
 ### Segmented (`components/segmented.tsx`)
 - Contenitore incassato `--muted`, `rounded-full`, padding 4px.
 - Voce inattiva: 13px medium, `--muted-foreground`.
 - Voce attiva: **pillola bianca** con hairline `--border`, ombra minima, testo inchiostro.
-  La prop `variant="dark"` (toggle di periodo) usa la stessa pillola, ma su fondo
-  `--foreground` con testo chiaro: non è una dark mode.
+  Vale anche per il toggle di periodo (`ALL 5Y 1Y YTD`): nessuna variante scura,
+  label sans 13px (niente monospace sui toggle di testo).
 - Stessa grammatica per il `TypeToggle`: voce attiva bianca, icona/testo Income in
   `--positive`, Expense in `--destructive`.
 
@@ -196,12 +209,20 @@ Regole:
 ### Tabelle (`components/ui/table.tsx`)
 - Nessun header pesante: label 12–13px in `--faint-foreground` su sfondo trasparente,
   sentence case.
-- Righe bianche con separatori hairline `--border`; hover `--muted`/50.
-- Bande di raggruppamento (data/giorno) su `#F7F6F3` con testo 13px/600 inchiostro, se la
-  pagina raggruppa per data.
-- Importi a destra in `.font-numeric` inchiostro; quantità e percentuali secondarie.
+- Righe bianche con separatori hairline `--border` **solo tra le righe dello stesso
+  gruppo** (nessun divisore dopo l'ultima riga di un gruppo né sopra una banda data);
+  hover `--row-hover`.
+- Bande di raggruppamento (data/giorno) su `--row-group` (`bg-row-group`),
+  **senza bordi tabella**, con data in 11px sans `--muted-foreground` (non uppercase);
+  tra un gruppo e il successivo una riga spaziatrice di ~10px (`h-2.5 p-0`), mai prima
+  del primo gruppo, se la pagina raggruppa per data.
+- La barra filtri di una lista può stare **dentro la card della tabella** come toolbar
+  (padding 12px, senza bordo inferiore: la prima banda separa già), così l'angolo
+  arrotondato della card resta pulito.
+- Importi a destra in `.font-numeric` (inchiostro, o verde/rosso nelle liste di
+  transazioni — vedi Money) con la colonna dimensionata sul contenuto (`w-[1%]`) così
+  l'importo resta vicino alle icone; azioni di riga in `--muted-foreground`.
 - Checkbox `rounded-md` 16px, bordo `--input`; riga selezionata tinta `--primary-soft`.
-
 ### Barre e dot
 - **Dot semantico/categoria**: 8px `rounded-full`, colore categoria o semantico, allineato
   con il testo.
@@ -226,8 +247,9 @@ Regole:
 
 ### Money (`components/money.tsx`)
 - EUR, cifre tabellari, locale di formattazione invariato (`en-US`: `€1,234.56`).
-- `signed` mostra `+`/`−`. Gli importi restano **sempre in inchiostro**: il colore non
-  codifica il segno (semmai lo fa un dot o un badge accanto).
+- `signed` mostra `+`/`−`. Nelle viste aggregate (KPI, ripartizioni, totali) gli importi
+  restano in **inchiostro**; nelle **liste di transazioni** il colore è ammesso per
+  distinguere income/expense (`--positive` / `--destructive`), sempre insieme al segno.
 
 ---
 
@@ -237,6 +259,10 @@ Libreria: Recharts via wrapper `components/ui/chart.tsx` (invariato).
 
 - **Assi**: nessuna linea asse, tick 12px `--faint-foreground` numerici; griglia **solo
   orizzontale** `--chart-grid` (dash `3 3` opzionale). Niente griglia verticale.
+- **Asse Y**: valori compatti in migliaia (`200k`), anche per lasciare più spazio al
+  grafico.
+- **Asse X**: etichette `Mmm YYYY` (`Jan 2026`), diradate con `minTickGap` e
+  `interval="preserveStartEnd"` così restano leggibili anche su range lunghi (`ALL`).
 - **Tratti**: 2px; la serie protagonista può arrivare a 2.5px. Nessuna animazione
   (`isAnimationActive={false}`), coerente con l'attuale.
 - **Net worth**: linea arancio `--primary`, sempre (non più "umore" petrolio/argilla), con
@@ -246,8 +272,8 @@ Libreria: Recharts via wrapper `components/ui/chart.tsx` (invariato).
 - **Tooltip**: popover `--popover` con hairline, radius 12, ombra raised, testo 12–13px.
 - **Ripartizione/classifica**: barre orizzontali sottili con colore categorico e dot di
   legenda; label categoria 12–13px, importi numerici.
-- **Allocazione**: barra composita e/o donut con spessore ~1/3 del raggio, totale al centro;
-  legenda `dot · nome · importo · %`.
+- **Allocazione**: barra composita e/o donut con spessore ~1/3 del raggio, **senza
+  testo al centro**; legenda `dot · nome · importo · %`.
 - **Flussi**: sola palette semantica/categorica, nessun arco decorativo; i colori seguono la
   categoria.
 - Niente titoli duplicati dentro il grafico: il titolo è della card.
@@ -256,7 +282,8 @@ Libreria: Recharts via wrapper `components/ui/chart.tsx` (invariato).
 
 ## 6. Formati
 
-- **Date**: sempre `YYYY-MM-DD` (input con pattern, display ISO ovunque).
+- **Date**: `YYYY-MM-DD` per input e viste dense; forma estesa `21 September 2026` nelle
+  fasce di raggruppamento per giorno e `Mmm YYYY` sugli assi (mai ISO sulle fasce).
 - **Money**: EUR via `Money`, cifre tabellari; `signed` per i net (`+€X` / `−€X`).
 - **Tipi income/expense**: verde/rosso soft in badge e toggle; nei numeri il segno, non il
   colore.
@@ -295,13 +322,15 @@ Principi già fissati che l'impaginazione dovrà rispettare:
   --color-border: #EBEAE5;
   --color-input: #E1E1DE;
   --color-chart-grid: #EFEEE9;
+  --color-row-group: #F2F0EB;
+  --color-row-hover: #F6F5F2;
   --color-primary: #ED7240;
   --color-primary-foreground: #FFFFFF;
   --color-primary-soft: #FBF3EC;
-  --color-positive: #3D832A;
+  --color-positive: #437B36;
   --color-positive-soft: #EAF3E7;
   --color-positive-chart: #53AC7D;
-  --color-destructive: #B73330;
+  --color-destructive: #A94440;
   --color-destructive-soft: #F9E9E7;
   --color-chart-1: #4176CF;
   --color-chart-2: #E2A439;

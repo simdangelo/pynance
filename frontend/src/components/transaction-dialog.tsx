@@ -244,7 +244,7 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
               <span
                 className={cn(
                   "pointer-events-none absolute inset-y-0 left-3 flex items-center font-numeric text-lg font-medium",
-                  income ? "text-moss" : "text-clay",
+                  income ? "text-positive" : "text-destructive",
                 )}
               >
                 {income ? "+" : "−"} €&nbsp;
@@ -285,7 +285,7 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
           <div
             className={cn(
               "flex items-center justify-between rounded-lg px-3.5 py-2.5",
-              income ? "bg-moss/10" : "bg-clay/10",
+              income ? "bg-positive-soft" : "bg-destructive-soft",
             )}
           >
             <span className="text-sm text-muted-foreground">
@@ -296,13 +296,13 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
               signed
               className={cn(
                 "font-medium",
-                income ? "text-moss" : "text-clay",
+                income ? "text-positive" : "text-destructive",
               )}
             />
           </div>
 
           {formError && (
-            <div className="rounded-lg border border-clay/30 bg-clay/10 px-3.5 py-2.5 text-sm text-clay">
+            <div className="rounded-lg bg-destructive-soft px-3.5 py-2.5 text-sm text-destructive">
               {formError}
             </div>
           )}

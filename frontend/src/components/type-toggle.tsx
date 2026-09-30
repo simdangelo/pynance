@@ -9,7 +9,7 @@ interface TypeToggleProps {
 }
 
 const itemClass =
-  "flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+  "flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
 
 export function TypeToggle({ value, onChange }: TypeToggleProps) {
   const income = value === "income"

@@ -45,7 +45,7 @@ export function Segmented({
               !active && "hover:text-foreground",
               size === "sm"
                 ? "rounded-full px-3 py-1 text-[13px]"
-                : "rounded-md px-4 py-1.5 text-sm",
+                : "rounded-lg px-4 py-1.5 text-sm",
               active && "bg-card text-foreground shadow-sm ring-1 ring-border",
             )}
           >

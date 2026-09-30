@@ -41,7 +41,7 @@ export function DueNowCard({
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="text-base">Due now</CardTitle>
-        <Badge variant="secondary" className="bg-ochre/10 text-ochre">
+        <Badge variant="secondary" className="bg-destructive-soft text-destructive">
           {templates.length} due
         </Badge>
       </CardHeader>
@@ -72,9 +72,10 @@ export function DueNowCard({
                         ? template.amount
                         : (-Number(template.amount)).toFixed(2)
                     }
+                    signed
                     className={cn(
                       "text-sm font-medium",
-                      income ? "text-moss" : "text-clay",
+                      income ? "text-positive" : "text-destructive",
                     )}
                   />
                   <Button

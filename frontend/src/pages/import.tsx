@@ -352,7 +352,7 @@ export default function ImportData() {
   const busy = previewMutation.isPending || commitMutation.isPending
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Import"
         subtitle="Bring in transactions from any CSV or Excel file: check the columns, choose where they go, pick the rows."

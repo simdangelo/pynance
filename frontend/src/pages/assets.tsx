@@ -1,24 +1,20 @@
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { ChevronDown, ChevronUp, Landmark, Layers, Pencil, Plus, Trash2 } from "lucide-react"
+import { Landmark, Plus } from "lucide-react"
 
 import { api } from "@/lib/api"
-import type { Asset, AssetClass, Bucket } from "@/types/api"
-import {
-  ASSET_CLASSES,
-  ASSET_CLASS_COLOR,
-  ASSET_CLASS_LABEL,
-  LIQUIDITY_COLOR,
-  LIQUIDITY_LABEL,
-} from "@/lib/asset-meta"
-import { Money } from "@/components/money"
+import type { Asset, Bucket, LiquidityCategory, Transfer } from "@/types/api"
+import { AllocationOverview } from "@/components/allocation-overview"
+import { AllocationTree } from "@/components/allocation-tree"
 import { AssetDialog } from "@/components/asset-dialog"
 import { BucketDialog } from "@/components/bucket-dialog"
 import { BucketDeleteDialog } from "@/components/bucket-delete-dialog"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { EmptyState } from "@/components/empty-state"
-import { Segmented } from "@/components/segmented"
+import { PageHeader } from "@/components/page-header"
+import { TransferDialog } from "@/components/transfer-dialog"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import Transfers from "@/pages/transfers"
 
@@ -27,28 +23,158 @@ type AssetsTab = "accounts" | "transfers"
 export default function Assets() {
   const [tab, setTab] = useState<AssetsTab>("accounts")
 
+  const [assetDialogOpen, setAssetDialogOpen] = useState(false)
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
+  const [assetBucketPreset, setAssetBucketPreset] = useState<number | undefined>(undefined)
+
+  const [bucketDialogOpen, setBucketDialogOpen] = useState(false)
+  const [editingBucket, setEditingBucket] = useState<Bucket | null>(null)
+  const [bucketCategoryPreset, setBucketCategoryPreset] = useState<
+    LiquidityCategory | undefined
+  >(undefined)
+
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false)
+  const [editingTransfer, setEditingTransfer] = useState<Transfer | null>(null)
+
+  const openAddTransfer = () => {
+    setEditingTransfer(null)
+    setTransferDialogOpen(true)
+  }
+
+  const openEditTransfer = (transfer: Transfer) => {
+    setEditingTransfer(transfer)
+    setTransferDialogOpen(true)
+  }
+
+  const openAddAsset = (bucketId?: number) => {
+    setEditingAsset(null)
+    setAssetBucketPreset(bucketId)
+    setAssetDialogOpen(true)
+  }
+
+  const openEditAsset = (asset: Asset) => {
+    setEditingAsset(asset)
+    setAssetBucketPreset(undefined)
+    setAssetDialogOpen(true)
+  }
+
+  const openAddBucket = (category?: LiquidityCategory) => {
+    setEditingBucket(null)
+    setBucketCategoryPreset(category)
+    setBucketDialogOpen(true)
+  }
+
+  const openEditBucket = (bucket: Bucket) => {
+    setEditingBucket(bucket)
+    setBucketCategoryPreset(undefined)
+    setBucketDialogOpen(true)
+  }
+
   return (
     <div className="space-y-5">
-      <Segmented
-        size="md"
-        value={tab}
-        onChange={(value) => setTab(value as AssetsTab)}
-        options={[
-          { value: "accounts", label: "Accounts" },
-          { value: "transfers", label: "Transfers" },
-        ]}
+      <PageHeader
+        title="Assets"
+        tabs={<AssetTabs value={tab} onChange={setTab} />}
+        action={
+          tab === "transfers" ? (
+            <Button onClick={openAddTransfer}>
+              <Plus className="mr-1 h-4 w-4" /> Add transfer
+            </Button>
+          ) : undefined
+        }
       />
-      {tab === "transfers" ? <Transfers /> : <AccountsPanel />}
+      {tab === "transfers" ? (
+        <Transfers
+          onAddTransfer={openAddTransfer}
+          onEditTransfer={openEditTransfer}
+        />
+      ) : (
+        <AccountsPanel
+          onAddAsset={openAddAsset}
+          onEditAsset={openEditAsset}
+          onAddBucket={openAddBucket}
+          onEditBucket={openEditBucket}
+        />
+      )}
+
+      <AssetDialog
+        open={assetDialogOpen}
+        onOpenChange={setAssetDialogOpen}
+        asset={editingAsset}
+        defaultBucketId={assetBucketPreset}
+      />
+
+      <BucketDialog
+        open={bucketDialogOpen}
+        onOpenChange={setBucketDialogOpen}
+        bucket={editingBucket}
+        defaultLiquidityCategory={bucketCategoryPreset}
+      />
+
+      <TransferDialog
+        open={transferDialogOpen}
+        onOpenChange={setTransferDialogOpen}
+        transfer={editingTransfer}
+      />
     </div>
   )
 }
 
-function AccountsPanel() {
+function AssetTabs({
+  value,
+  onChange,
+}: {
+  value: AssetsTab
+  onChange: (tab: AssetsTab) => void
+}) {
+  const tabs: { value: AssetsTab; label: string }[] = [
+    { value: "accounts", label: "Accounts" },
+    { value: "transfers", label: "Transfers" },
+  ]
+
+  return (
+    <div className="flex items-baseline gap-5">
+      {tabs.map((tab) => {
+        const active = value === tab.value
+        return (
+          <button
+            key={tab.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(tab.value)}
+            className={cn(
+              "relative cursor-pointer text-lg font-medium transition-colors",
+              active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {tab.label}
+            <span
+              className={cn(
+                "absolute inset-x-0 -bottom-1.5 h-0.5 rounded-full bg-primary transition-opacity",
+                active ? "opacity-100" : "opacity-0",
+              )}
+            />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+interface AccountsPanelProps {
+  onAddAsset: (bucketId?: number) => void
+  onEditAsset: (asset: Asset) => void
+  onAddBucket: (category?: LiquidityCategory) => void
+  onEditBucket: (bucket: Bucket) => void
+}
+
+function AccountsPanel({
+  onAddAsset,
+  onEditAsset,
+  onAddBucket,
+  onEditBucket,
+}: AccountsPanelProps) {
   const queryClient = useQueryClient()
-  const [assetDialogOpen, setAssetDialogOpen] = useState(false)
-  const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
-  const [bucketDialogOpen, setBucketDialogOpen] = useState(false)
-  const [editingBucket, setEditingBucket] = useState<Bucket | null>(null)
   const [deleteAssetTarget, setDeleteAssetTarget] = useState<Asset | null>(null)
   const [deleteBucketTarget, setDeleteBucketTarget] = useState<Bucket | null>(null)
 
@@ -81,41 +207,6 @@ function AccountsPanel() {
     },
   })
 
-  const reorderMutation = useMutation({
-    mutationFn: async ({ bucket, direction }: { bucket: Bucket; direction: -1 | 1 }) => {
-      const ordered = [...(buckets ?? [])]
-      const index = ordered.findIndex((candidate) => candidate.id === bucket.id)
-      const target = index + direction
-      if (index < 0 || target < 0 || target >= ordered.length) return
-      const reordered = [...ordered]
-      const moved = reordered[index]
-      reordered[index] = reordered[target]
-      reordered[target] = moved
-      await Promise.all(
-        reordered.map((candidate, position) =>
-          candidate.sort_order === position
-            ? Promise.resolve()
-            : api.buckets.update(candidate.id, { sort_order: position }),
-        ),
-      )
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["buckets"] }),
-    onError: (error: Error) => toast.error(error.message || "Failed to reorder buckets"),
-  })
-
-  const total = useMemo(
-    () => (assets ?? []).reduce((sum, asset) => sum + Number(asset.balance), 0),
-    [assets],
-  )
-
-  const allocationByBucket = useMemo(() => {
-    const map: Record<number, number> = {}
-    for (const row of allocation?.by_bucket ?? []) {
-      map[row.bucket_id] = Number(row.total)
-    }
-    return map
-  }, [allocation])
-
   const assetCountByBucket = useMemo(() => {
     const map: Record<number, number> = {}
     for (const asset of assets ?? []) {
@@ -124,81 +215,8 @@ function AccountsPanel() {
     return map
   }, [assets])
 
-  const classAllocation = useMemo(() => {
-    const totals: Partial<Record<AssetClass, number>> = {}
-    for (const asset of assets ?? []) {
-      totals[asset.asset_class] = (totals[asset.asset_class] ?? 0) + Number(asset.balance)
-    }
-    const sum = Object.values(totals).reduce<number>((acc, value) => acc + (value ?? 0), 0)
-    return ASSET_CLASSES.map((assetClass) => ({
-      assetClass,
-      name: ASSET_CLASS_LABEL[assetClass],
-      value: totals[assetClass] ?? 0,
-      pct: sum > 0 ? ((totals[assetClass] ?? 0) / sum) * 100 : 0,
-      color: ASSET_CLASS_COLOR[assetClass],
-    }))
-      .filter((entry) => entry.value > 0)
-      .sort((a, b) => b.value - a.value)
-  }, [assets])
-
-  const openCreateAsset = () => {
-    setEditingAsset(null)
-    setAssetDialogOpen(true)
-  }
-
-  const openCreateBucket = () => {
-    setEditingBucket(null)
-    setBucketDialogOpen(true)
-  }
-
   return (
     <>
-      {/* Actions */}
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button variant="outline" onClick={openCreateBucket}>
-          <Plus className="mr-1 h-4 w-4" /> Add bucket
-        </Button>
-        <Button onClick={openCreateAsset}>
-          <Plus className="mr-1 h-4 w-4" /> Add asset
-        </Button>
-      </div>
-
-      {/* Composition by asset class */}
-      {!isLoading && classAllocation.length > 0 && (
-        <section>
-          <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full">
-            {classAllocation.map((entry) => (
-              <div
-                key={entry.assetClass}
-                className="h-full"
-                style={{
-                  width: `${Math.max(entry.pct, 1)}%`,
-                  backgroundColor: entry.color,
-                }}
-              />
-            ))}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5">
-            {classAllocation.map((entry) => (
-              <span key={entry.assetClass} className="flex items-center gap-2 text-sm">
-                <span
-                  className="size-2 rounded-full"
-                  style={{ backgroundColor: entry.color }}
-                />
-                <span className="font-medium">{entry.name}</span>
-                <span className="text-muted-foreground">·</span>
-                <Money value={entry.value.toFixed(2)} />
-                <span className="text-muted-foreground">·</span>
-                <span className="font-numeric text-muted-foreground">
-                  {entry.pct.toFixed(0)}%
-                </span>
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Buckets with their assets */}
       {isLoading ? (
         <p className="py-6 text-sm text-muted-foreground">Loading…</p>
       ) : isError ? (
@@ -209,152 +227,40 @@ function AccountsPanel() {
           title="No assets yet"
           subtitle="Add a money pool (checking, savings, ...), pick what it is and which bucket it belongs to."
           action={
-            <Button size="sm" onClick={openCreateAsset}>
+            <Button size="sm" onClick={() => onAddAsset()}>
               <Plus className="mr-1 h-4 w-4" /> Add asset
             </Button>
           }
         />
       ) : (
-        <div className="space-y-3">
-          {(buckets ?? []).map((bucket, index) => {
-            const items = (assets ?? []).filter((a) => a.bucket_id === bucket.id)
-            return (
-              <div key={bucket.id} className="rounded-xl border border-border">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="size-2 rounded-full"
-                      style={{ backgroundColor: LIQUIDITY_COLOR[bucket.liquidity_category] }}
-                    />
-                    <span className="text-sm font-semibold">{bucket.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {LIQUIDITY_LABEL[bucket.liquidity_category]}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Money
-                      value={(allocationByBucket[bucket.id] ?? 0).toFixed(2)}
-                      className="mr-2 text-sm font-medium"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Move bucket up"
-                      disabled={index === 0 || reorderMutation.isPending}
-                      onClick={() => reorderMutation.mutate({ bucket, direction: -1 })}
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Move bucket down"
-                      disabled={
-                        index === (buckets?.length ?? 1) - 1 || reorderMutation.isPending
-                      }
-                      onClick={() => reorderMutation.mutate({ bucket, direction: 1 })}
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Edit bucket"
-                      onClick={() => {
-                        setEditingBucket(bucket)
-                        setBucketDialogOpen(true)
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Delete bucket"
-                      onClick={() => setDeleteBucketTarget(bucket)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {items.length === 0 ? (
-                  <p className="px-4 py-3 text-sm text-muted-foreground">
-                    No assets in this bucket yet.
-                  </p>
-                ) : (
-                  <div className="px-4 py-1">
-                    {items.map((asset) => (
-                      <div
-                        key={asset.id}
-                        className="flex items-center justify-between py-1.5"
-                      >
-                        <span className="flex items-center gap-2 text-sm">
-                          <Layers className="hidden size-3.5 text-muted-foreground sm:block" />
-                          <span className="font-medium">{asset.name}</span>
-                          <span className="text-muted-foreground">·</span>
-                          <span className="text-xs text-muted-foreground">
-                            {ASSET_CLASS_LABEL[asset.asset_class]}
-                          </span>
-                        </span>
-                        <div className="flex items-center gap-3">
-                          <Money value={asset.balance} className="text-sm font-medium" />
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="Edit asset"
-                            onClick={() => {
-                              setEditingAsset(asset)
-                              setAssetDialogOpen(true)
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="Delete asset"
-                            onClick={() => setDeleteAssetTarget(asset)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+        <div className="space-y-5">
+          <AllocationOverview
+            assets={assets}
+            buckets={buckets ?? []}
+            allocation={allocation}
+          />
+          <AllocationTree
+            assets={assets}
+            buckets={buckets ?? []}
+            allocation={allocation}
+            onAddBucket={onAddBucket}
+            onAddAsset={(bucket) => onAddAsset(bucket.id)}
+            onEditBucket={onEditBucket}
+            onDeleteBucket={(bucket) => setDeleteBucketTarget(bucket)}
+            onEditAsset={onEditAsset}
+            onDeleteAsset={(asset) => setDeleteAssetTarget(asset)}
+          />
         </div>
       )}
-
-      {/* Net worth total */}
-      {!isLoading && (assets?.length ?? 0) > 0 && (
-        <div className="flex items-baseline justify-between border-t border-border pt-3">
-          <span className="text-sm font-medium text-muted-foreground">Net worth</span>
-          <Money value={total.toFixed(2)} className="text-lg font-medium" />
-        </div>
-      )}
-
-      <AssetDialog
-        open={assetDialogOpen}
-        onOpenChange={setAssetDialogOpen}
-        asset={editingAsset}
-      />
-
-      <BucketDialog
-        open={bucketDialogOpen}
-        onOpenChange={setBucketDialogOpen}
-        bucket={editingBucket}
-      />
 
       <BucketDeleteDialog
         open={deleteBucketTarget !== null}
         onOpenChange={(open) => !open && setDeleteBucketTarget(null)}
         bucket={deleteBucketTarget}
         buckets={buckets ?? []}
-        assetCount={deleteBucketTarget ? (assetCountByBucket[deleteBucketTarget.id] ?? 0) : 0}
+        assetCount={
+          deleteBucketTarget ? (assetCountByBucket[deleteBucketTarget.id] ?? 0) : 0
+        }
       />
 
       <ConfirmDialog
@@ -366,7 +272,9 @@ function AccountsPanel() {
             ? `"${deleteAssetTarget.name}" will be permanently removed. Assets with transactions or transfers cannot be deleted.`
             : undefined
         }
-        onConfirm={() => deleteAssetTarget && deleteAssetMutation.mutate(deleteAssetTarget.id)}
+        onConfirm={() =>
+          deleteAssetTarget && deleteAssetMutation.mutate(deleteAssetTarget.id)
+        }
       />
     </>
   )

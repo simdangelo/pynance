@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 
 export default function Reports() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Reports"
         subtitle="Trends, comparisons and breakdowns by category."

@@ -49,6 +49,7 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
   const [interval, setInterval] = useState("1")
   const [nextOccurrence, setNextOccurrence] = useState("")
   const [active, setActive] = useState("true")
+  const [formError, setFormError] = useState("")
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
@@ -64,6 +65,7 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
       setInterval(String(template?.interval ?? 1))
       setNextOccurrence(template?.next_occurrence ?? todayLocalISO())
       setActive(String(template?.active ?? true))
+      setFormError("")
     }
   }, [open, template])
 
@@ -115,7 +117,11 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedCategory) return
+    if (!selectedCategory) {
+      setFormError("Select a category first")
+      return
+    }
+    setFormError("")
     mutation.mutate({
       description,
       amount,
@@ -193,7 +199,7 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
               <span
                 className={cn(
                   "pointer-events-none absolute inset-y-0 left-3 flex items-center font-numeric text-lg font-medium",
-                  income ? "text-moss" : "text-clay",
+                  income ? "text-positive" : "text-destructive",
                 )}
               >
                 {income ? "+" : "−"} €&nbsp;
@@ -271,7 +277,7 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
           <div
             className={cn(
               "flex items-center justify-between rounded-lg px-3.5 py-2.5",
-              income ? "bg-moss/10" : "bg-clay/10",
+              income ? "bg-positive-soft" : "bg-destructive-soft",
             )}
           >
             <span className="text-sm text-muted-foreground">
@@ -283,10 +289,16 @@ export function RecurringDialog({ open, onOpenChange, template }: RecurringDialo
               signed
               className={cn(
                 "font-medium",
-                income ? "text-moss" : "text-clay",
+                income ? "text-positive" : "text-destructive",
               )}
             />
           </div>
+
+          {formError && (
+            <div className="rounded-lg bg-destructive-soft px-3.5 py-2.5 text-sm text-destructive">
+              {formError}
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

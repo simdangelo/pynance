@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { Fragment, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { ArrowLeftRight, ArrowRight, Pencil, Plus, Trash2 } from "lucide-react"
@@ -6,7 +6,6 @@ import { ArrowLeftRight, ArrowRight, Pencil, Plus, Trash2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Asset, Transfer } from "@/types/api"
 import { Money } from "@/components/money"
-import { TransferDialog } from "@/components/transfer-dialog"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { Button } from "@/components/ui/button"
@@ -20,10 +19,36 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-export default function Transfers() {
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+]
+
+function dayLabel(date: string): string {
+  const [year, month, day] = date.split("-")
+  return `${Number(day)} ${MONTHS[Number(month) - 1]} ${year}`
+}
+
+interface TransfersProps {
+  onAddTransfer: () => void
+  onEditTransfer: (transfer: Transfer) => void
+}
+
+export default function Transfers({
+  onAddTransfer,
+  onEditTransfer,
+}: TransfersProps) {
   const queryClient = useQueryClient()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<Transfer | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transfer | null>(null)
 
   const { data: transfers, isLoading, isError } = useQuery({
@@ -48,106 +73,120 @@ export default function Transfers() {
     onError: () => toast.error("Failed to delete transfer"),
   })
 
-  const openCreate = () => {
-    setEditing(null)
-    setDialogOpen(true)
-  }
+  const grouped = useMemo(() => {
+    const groups: { date: string; label: string; items: Transfer[] }[] = []
+    for (const transfer of transfers ?? []) {
+      const last = groups[groups.length - 1]
+      if (last && last.date === transfer.occurred_on) {
+        last.items.push(transfer)
+      } else {
+        groups.push({
+          date: transfer.occurred_on,
+          label: dayLabel(transfer.occurred_on),
+          items: [transfer],
+        })
+      }
+    }
+    return groups
+  }, [transfers])
 
   return (
-    <div className="space-y-5">
-      {/* Add action */}
-      <div className="flex flex-wrap items-center justify-end gap-4">
-        <Button onClick={openCreate}>
-          <Plus className="mr-1 h-4 w-4" /> Add transfer
-        </Button>
-      </div>
-
-      {/* Transfers list */}
-      <Card className="p-0">
+    <>
+      <Card className="gap-0 overflow-hidden py-0">
         <CardContent className="p-0">
           {isLoading ? (
             <p className="p-6 text-sm text-muted-foreground">Loading…</p>
           ) : isError ? (
             <p className="p-6 text-sm text-destructive">Failed to load transfers.</p>
-          ) : !transfers || transfers.length === 0 ? (
+          ) : grouped.length === 0 ? (
             <EmptyState
               icon={ArrowLeftRight}
               title="No transfers yet"
               subtitle="Move money from one asset to another."
               action={
-                <Button size="sm" onClick={openCreate}>
+                <Button size="sm" onClick={onAddTransfer}>
                   <Plus className="mr-1 h-4 w-4" /> Add transfer
                 </Button>
               }
             />
           ) : (
             <Table>
-              <TableHeader>
+              <TableHeader className="sr-only">
                 <TableRow>
-                  <TableHead className="w-[110px]">Date</TableHead>
-                  <TableHead>From → To</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead className="w-[120px] text-right">Amount</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
+                  <TableHead>From → To</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transfers.map((transfer) => (
-                  <TableRow key={transfer.id}>
-                    <TableCell className="font-numeric text-sm">
-                      {transfer.occurred_on}
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-1.5">
-                        {assetName(transfer.source_asset_id)}
-                        <ArrowRight className="size-3.5 text-muted-foreground" />
-                        {assetName(transfer.destination_asset_id)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="block max-w-[280px] truncate">
-                        {transfer.description}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Money value={transfer.amount} className="font-medium" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label="Edit transfer"
-                          onClick={() => {
-                            setEditing(transfer)
-                            setDialogOpen(true)
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label="Delete transfer"
-                          onClick={() => setDeleteTarget(transfer)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                {grouped.map((group) => (
+                  <Fragment key={group.date}>
+                    <TableRow className="border-b-0 bg-row-group hover:bg-row-group">
+                      <TableCell
+                        colSpan={4}
+                        className="text-[11px] font-medium tracking-[0.06em] text-muted-foreground"
+                      >
+                        {group.label}
+                      </TableCell>
+                    </TableRow>
+                    {group.items.map((transfer, itemIndex) => (
+                      <TableRow
+                        key={transfer.id}
+                        className={
+                          itemIndex === group.items.length - 1
+                            ? "border-b-0"
+                            : undefined
+                        }
+                      >
+                        <TableCell>
+                          <span className="block max-w-[280px] truncate">
+                            {transfer.description}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="flex items-center gap-1.5 text-muted-foreground">
+                            {assetName(transfer.source_asset_id)}
+                            <ArrowRight className="size-3.5" />
+                            <span className="text-foreground">
+                              {assetName(transfer.destination_asset_id)}
+                            </span>
+                          </span>
+                        </TableCell>
+                        <TableCell className="w-[1%] text-right">
+                          <Money value={transfer.amount} className="font-medium" />
+                        </TableCell>
+                        <TableCell className="w-[1%] text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground"
+                              aria-label="Edit transfer"
+                              onClick={() => onEditTransfer(transfer)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground"
+                              aria-label="Delete transfer"
+                              onClick={() => setDeleteTarget(transfer)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>
           )}
         </CardContent>
       </Card>
-
-      <TransferDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        transfer={editing}
-      />
 
       <ConfirmDialog
         open={deleteTarget !== null}
@@ -163,6 +202,6 @@ export default function Transfers() {
         }
         onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
       />
-    </div>
+    </>
   )
 }

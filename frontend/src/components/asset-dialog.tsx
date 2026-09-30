@@ -34,9 +34,15 @@ interface AssetDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   asset?: Asset | null
+  defaultBucketId?: number
 }
 
-export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
+export function AssetDialog({
+  open,
+  onOpenChange,
+  asset,
+  defaultBucketId,
+}: AssetDialogProps) {
   const queryClient = useQueryClient()
   const isEditing = Boolean(asset)
 
@@ -54,10 +60,16 @@ export function AssetDialog({ open, onOpenChange, asset }: AssetDialogProps) {
     if (open) {
       setName(asset?.name ?? "")
       setAssetClass(asset?.asset_class ?? "current_account")
-      setBucketId(asset ? String(asset.bucket_id) : "")
+      setBucketId(
+        asset
+          ? String(asset.bucket_id)
+          : defaultBucketId
+            ? String(defaultBucketId)
+            : "",
+      )
       setOpeningBalance(asset?.opening_balance ?? "0")
     }
-  }, [open, asset])
+  }, [open, asset, defaultBucketId])
 
   // A new asset defaults to the first bucket, once buckets are loaded.
   useEffect(() => {

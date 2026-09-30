@@ -28,9 +28,15 @@ interface BucketDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   bucket?: Bucket | null
+  defaultLiquidityCategory?: LiquidityCategory
 }
 
-export function BucketDialog({ open, onOpenChange, bucket }: BucketDialogProps) {
+export function BucketDialog({
+  open,
+  onOpenChange,
+  bucket,
+  defaultLiquidityCategory,
+}: BucketDialogProps) {
   const queryClient = useQueryClient()
   const isEditing = Boolean(bucket)
 
@@ -43,9 +49,11 @@ export function BucketDialog({ open, onOpenChange, bucket }: BucketDialogProps) 
     if (open) {
       setName(bucket?.name ?? "")
       setDescription(bucket?.description ?? "")
-      setLiquidityCategory(bucket?.liquidity_category ?? "liquid")
+      setLiquidityCategory(
+        bucket?.liquidity_category ?? defaultLiquidityCategory ?? "liquid",
+      )
     }
-  }, [open, bucket])
+  }, [open, bucket, defaultLiquidityCategory])
 
   const mutation = useMutation({
     mutationFn: (data: Parameters<typeof api.buckets.create>[0]) =>

@@ -8,10 +8,10 @@ import type { Category, RecurringTemplate } from "@/types/api"
 import { Money } from "@/components/money"
 import { frequencyLabel } from "@/components/frequency-label"
 import { RecurringDialog } from "@/components/recurring-dialog"
-import { TypeBadge } from "@/components/type-badge"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { DueNowCard } from "@/components/due-now-card"
 import { EmptyState } from "@/components/empty-state"
+import { PageHeader } from "@/components/page-header"
 import { Stat } from "@/components/stat"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -26,39 +26,23 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-function CategoryCell({
-  categoryId,
-  categories,
-}: {
-  categoryId: number
-  categories?: Category[]
-}) {
-  const category = categories?.find((c) => c.id === categoryId)
-  return (
-    <span className="flex items-center gap-2">
-      {category?.name ?? "Unknown"}
-      {category && <TypeBadge type={category.transaction_type} />}
-    </span>
-  )
-}
-
 function StatusBadge({ template }: { template: RecurringTemplate }) {
   if (!template.active) {
     return (
-      <Badge variant="secondary" className="bg-secondary text-muted-foreground">
+      <Badge variant="secondary" className="bg-muted text-muted-foreground">
         Paused
       </Badge>
     )
   }
   if (!template.due) {
     return (
-      <Badge variant="secondary" className="bg-moss/15 text-moss">
+      <Badge variant="secondary" className="bg-positive-soft text-positive">
         Active
       </Badge>
     )
   }
   return (
-    <Badge variant="secondary" className="bg-ochre/15 text-ochre">
+    <Badge variant="secondary" className="bg-destructive-soft text-destructive">
       Overdue
     </Badge>
   )
@@ -66,6 +50,10 @@ function StatusBadge({ template }: { template: RecurringTemplate }) {
 
 function categoryType(categories: Category[] | undefined, categoryId: number) {
   return categories?.find((c) => c.id === categoryId)?.transaction_type
+}
+
+function categoryName(categories: Category[] | undefined, categoryId: number) {
+  return categories?.find((c) => c.id === categoryId)?.name ?? "Unknown"
 }
 
 export default function Recurring() {
@@ -104,17 +92,34 @@ export default function Recurring() {
 
   return (
     <div className="space-y-5">
-      {/* Top band: stats + Add */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <section className="flex flex-wrap items-baseline gap-x-10 gap-y-3">
+      <PageHeader
+        title="Recurring"
+        action={
+          <Button onClick={openCreate}>
+            <Plus className="mr-1 h-4 w-4" /> Add template
+          </Button>
+        }
+      />
+
+      {/* Counts */}
+      <Card>
+        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Stat label="Active" value={activeCount} size="lg" />
-          <Stat label="Due" value={dueTemplates.length} size="lg" tone="attention" />
-          <Stat label="Paused" value={pausedCount} size="lg" />
-        </section>
-        <Button onClick={openCreate}>
-          <Plus className="mr-1 h-4 w-4" /> Add template
-        </Button>
-      </div>
+          <Stat
+            label="Due"
+            value={dueTemplates.length}
+            size="lg"
+            tone="negative"
+            className="sm:border-l sm:border-border sm:pl-4"
+          />
+          <Stat
+            label="Paused"
+            value={pausedCount}
+            size="lg"
+            className="sm:border-l sm:border-border sm:pl-4"
+          />
+        </CardContent>
+      </Card>
 
       {/* Due now — only when something is due */}
       {dueTemplates.length > 0 && (
@@ -122,7 +127,7 @@ export default function Recurring() {
       )}
 
       {/* Templates */}
-      <Card className="p-0">
+      <Card className="gap-0 overflow-hidden py-0">
         <CardContent className="p-0">
           {isLoading ? (
             <p className="p-6 text-sm text-muted-foreground">Loading…</p>
@@ -147,76 +152,83 @@ export default function Recurring() {
                   <TableHead>Category</TableHead>
                   <TableHead>Frequency</TableHead>
                   <TableHead>Next occurrence</TableHead>
-                  <TableHead className="w-[120px] text-right">Amount</TableHead>
+                  <TableHead className="w-[1%] text-right">Amount</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
+                  <TableHead className="w-[1%]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {templates.map((template) => (
-                  <TableRow key={template.id}>
-                    <TableCell>
-                      <span className="block max-w-[240px] truncate">
-                        {template.description}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <CategoryCell categoryId={template.category_id} categories={categories} />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {frequencyLabel(template.frequency, template.interval)}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        "font-numeric text-sm",
-                        template.due ? "text-ochre" : "",
-                      )}
-                    >
-                      {template.next_occurrence}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Money
-                        value={
-                          categoryType(categories, template.category_id) === "income"
-                            ? template.amount
-                            : (-Number(template.amount)).toFixed(2)
-                        }
+                {templates.map((template) => {
+                  const income =
+                    categoryType(categories, template.category_id) === "income"
+                  return (
+                    <TableRow key={template.id}>
+                      <TableCell>
+                        <span className="block max-w-[240px] truncate">
+                          {template.description}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {categoryName(categories, template.category_id)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {frequencyLabel(template.frequency, template.interval)}
+                      </TableCell>
+                      <TableCell
                         className={cn(
-                          "font-medium",
-                          categoryType(categories, template.category_id) === "income"
-                            ? "text-moss"
-                            : "text-clay",
+                          "font-numeric text-sm",
+                          template.due
+                            ? "text-destructive"
+                            : "text-muted-foreground",
                         )}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge template={template} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label="Edit template"
-                          onClick={() => {
-                            setEditing(template)
-                            setDialogOpen(true)
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label="Delete template"
-                          onClick={() => setDeleteTarget(template)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      >
+                        {template.next_occurrence}
+                      </TableCell>
+                      <TableCell className="w-[1%] text-right">
+                        <Money
+                          value={
+                            income
+                              ? template.amount
+                              : (-Number(template.amount)).toFixed(2)
+                          }
+                          signed
+                          className={cn(
+                            "font-medium",
+                            income ? "text-positive" : "text-destructive",
+                          )}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge template={template} />
+                      </TableCell>
+                      <TableCell className="w-[1%] text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground"
+                            aria-label="Edit template"
+                            onClick={() => {
+                              setEditing(template)
+                              setDialogOpen(true)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground"
+                            aria-label="Delete template"
+                            onClick={() => setDeleteTarget(template)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}

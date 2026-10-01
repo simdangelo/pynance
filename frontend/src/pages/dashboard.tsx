@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { api } from "@/lib/api"
+import { formatCompact, monthLabel } from "@/lib/chart"
 import { DashboardHero, type LiquidityEntry } from "@/components/dashboard-hero"
 import { PageHeader } from "@/components/page-header"
 import {
@@ -15,21 +16,12 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  type ChartConfig,
 } from "@/components/ui/chart"
 
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-]
-
-function monthLabel(month: string): string {
-  const [year, m] = month.split("-")
-  return `${MONTHS[Number(m) - 1]} ${year}`
-}
-
-function formatCompact(value: number): string {
-  return Math.abs(value) >= 1000 ? `${Math.round(value / 1000)}k` : String(value)
-}
+const NET_WORTH_CONFIG = {
+  amount: { label: "Net worth", color: "var(--primary)" },
+} satisfies ChartConfig
 
 function greeting(date = new Date()): string {
   const hour = date.getHours()
@@ -124,54 +116,62 @@ export default function Dashboard() {
               No net worth history in this range.
             </p>
           ) : (
-            <ChartContainer
-              config={{ amount: { label: "Net worth", color: "var(--color-primary)" } }}
-              className="h-[380px] w-full"
-            >
+            <ChartContainer config={NET_WORTH_CONFIG} className="h-[380px] w-full">
               <AreaChart
+                accessibilityLayer
                 data={trendData}
-                margin={{ top: 8, right: 8, bottom: 0, left: 8 }}
+                margin={{ left: 12, right: 12 }}
               >
                 <defs>
                   <linearGradient id="netWorthFill" x1="0" y1="0" x2="0" y2="1">
                     <stop
                       offset="0%"
-                      stopColor="var(--color-primary)"
+                      stopColor="var(--color-amount)"
                       stopOpacity={0.18}
                     />
                     <stop
                       offset="100%"
-                      stopColor="var(--color-primary)"
+                      stopColor="var(--color-amount)"
                       stopOpacity={0}
                     />
                   </linearGradient>
                 </defs>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                <CartesianGrid
+                  vertical={false}
+                  stroke="var(--color-chart-grid)"
+                  strokeDasharray="3 3"
+                />
                 <XAxis
                   dataKey="month"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  tickFormatter={monthLabel}
                   minTickGap={32}
                   interval="preserveStartEnd"
-                  tick={{ className: "font-numeric text-xs" }}
+                  tick={{ className: "font-numeric" }}
+                  tickFormatter={monthLabel}
                 />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
                   width={56}
+                  tick={{ className: "font-numeric" }}
                   tickFormatter={formatCompact}
-                  tick={{ className: "font-numeric text-xs" }}
                 />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={(value) => monthLabel(String(value))}
+                    />
+                  }
+                />
                 <Area
-                  type="linear"
                   dataKey="amount"
-                  stroke="var(--color-primary)"
+                  type="linear"
+                  stroke="var(--color-amount)"
                   strokeWidth={2.5}
                   fill="url(#netWorthFill)"
-                  dot={trendData.length <= 24 ? { r: 2.5 } : false}
+                  dot={false}
                   activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />

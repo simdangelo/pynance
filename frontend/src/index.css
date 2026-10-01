@@ -59,8 +59,6 @@
     --color-moss: var(--moss);
     --color-clay: var(--clay);
     --color-ochre: var(--ochre);
-    --color-chart-income: var(--chart-income);
-    --color-chart-expense: var(--chart-expense);
     --color-slate: var(--slate);
     --color-plum: var(--plum);
     --color-teal: var(--teal);
@@ -128,8 +126,6 @@
     --moss: var(--positive);
     --clay: var(--destructive);
     --ochre: var(--chart-2);
-    --chart-income: var(--positive);
-    --chart-expense: var(--destructive);
     --slate: var(--chart-1);
     --plum: var(--chart-6);
     --teal: var(--chart-7);

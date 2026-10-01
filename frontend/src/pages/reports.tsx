@@ -6,20 +6,18 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ReferenceLine,
   XAxis,
   YAxis,
 } from "recharts"
 
 import { api } from "@/lib/api"
+import { formatCompact, monthLabel } from "@/lib/chart"
 import { cn } from "@/lib/utils"
 import type { TransactionType } from "@/types/api"
-import { useDonutHover } from "@/components/donut-hover"
+import { DonutChart } from "@/components/donut-chart"
 import { Money } from "@/components/money"
 import { PageHeader } from "@/components/page-header"
 import { PageTabs } from "@/components/page-tabs"
@@ -38,6 +36,7 @@ import {
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
+  type ChartConfig,
 } from "@/components/ui/chart"
 
 type Period = "ytd" | "all" | number
@@ -61,31 +60,11 @@ const CHART_COLORS = [
 
 const OTHER_COLOR = "var(--color-muted-foreground)"
 
-const MONTHS_SHORT = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-]
-
-function monthLabel(month: string): string {
-  const [year, m] = month.split("-")
-  return `${MONTHS_SHORT[Number(m) - 1]} ${year}`
-}
-
-function formatCompact(value: number): string {
-  return Math.abs(value) >= 1000
-    ? `${Math.round(value / 1000)}k`
-    : String(value)
-}
+const CASH_FLOW_CONFIG = {
+  income: { label: "Income", color: "var(--positive)" },
+  expense: { label: "Expense", color: "var(--destructive)" },
+  net: { label: "Net", color: "var(--primary)" },
+} satisfies ChartConfig
 
 function todayISO(): string {
   const now = new Date()
@@ -237,7 +216,6 @@ function CashFlowPanel({
   const netIncome = totalIncome - totalExpense
   const netAverage = months > 0 ? netIncome / months : 0
   const savingRate = totalIncome > 0 ? (netIncome / totalIncome) * 100 : null
-  const showDots = chartData.length <= 24
 
   return (
     <div className="space-y-5">
@@ -302,34 +280,32 @@ function CashFlowPanel({
               No activity in this period.
             </p>
           ) : (
-            <ChartContainer
-              config={{
-                income: { label: "Income", color: "var(--color-positive)" },
-                expense: { label: "Expense", color: "var(--color-destructive)" },
-                net: { label: "Net", color: "var(--color-chart-1)" },
-              }}
-              className="h-[320px] w-full"
-            >
+            <ChartContainer config={CASH_FLOW_CONFIG} className="h-[320px] w-full">
               <LineChart
+                accessibilityLayer
                 data={chartData}
-                margin={{ top: 8, right: 8, bottom: 0, left: 8 }}
+                margin={{ left: 12, right: 12 }}
               >
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                <CartesianGrid
+                  vertical={false}
+                  stroke="var(--color-chart-grid)"
+                  strokeDasharray="3 3"
+                />
                 <XAxis
                   dataKey="month"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  tick={{ className: "font-numeric text-xs" }}
-                  tickFormatter={monthLabel}
                   minTickGap={32}
                   interval="preserveStartEnd"
+                  tick={{ className: "font-numeric" }}
+                  tickFormatter={monthLabel}
                 />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
                   width={56}
-                  tick={{ className: "font-numeric text-xs" }}
+                  tick={{ className: "font-numeric" }}
                   tickFormatter={formatCompact}
                 />
                 <ChartTooltip
@@ -341,29 +317,29 @@ function CashFlowPanel({
                 />
                 <ChartLegend content={<ChartLegendContent />} />
                 <Line
-                  type="linear"
                   dataKey="income"
-                  stroke="var(--color-positive)"
+                  type="linear"
+                  stroke="var(--color-income)"
                   strokeWidth={2}
-                  dot={showDots ? { r: 2.5 } : false}
+                  dot={false}
                   activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />
                 <Line
-                  type="linear"
                   dataKey="expense"
-                  stroke="var(--color-destructive)"
+                  type="linear"
+                  stroke="var(--color-expense)"
                   strokeWidth={2}
-                  dot={showDots ? { r: 2.5 } : false}
+                  dot={false}
                   activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />
                 <Line
-                  type="linear"
                   dataKey="net"
-                  stroke="var(--color-chart-1)"
+                  type="linear"
+                  stroke="var(--color-net)"
                   strokeWidth={2.5}
-                  dot={showDots ? { r: 2.5 } : false}
+                  dot={false}
                   activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />
@@ -490,15 +466,6 @@ function BreakdownPanel({
   const isIncome = type === "income"
   const title = isIncome ? "Income breakdown" : "Spending breakdown"
 
-  const { containerProps, enterSlice, popup } = useDonutHover(
-    rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      color: row.color,
-      value: row.amount.toFixed(2),
-    })),
-  )
-
   return (
     <div className="space-y-5">
       <Card>
@@ -568,48 +535,16 @@ function BreakdownPanel({
             </p>
           ) : (
             <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-              <div className="flex w-112 shrink-0 flex-col items-center gap-4">
-                <div className="relative size-112" {...containerProps}>
-                  <ChartContainer config={{}} className="size-112">
-                    <PieChart>
-                      <Pie
-                        data={rows}
-                        dataKey="amount"
-                        nameKey="name"
-                        innerRadius={134}
-                        outerRadius={208}
-                        paddingAngle={2}
-                        strokeWidth={0}
-                        isAnimationActive={false}
-                        onMouseEnter={(_, index) => enterSlice(index)}
-                      >
-                        {rows.map((row) => (
-                          <Cell key={row.id} fill={row.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ChartContainer>
-                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-                    <span className="text-[13px] text-muted-foreground">Total</span>
-                    <Money value={total.toFixed(2)} className="text-xl font-semibold" />
-                  </div>
-                  {popup}
-                </div>
-                <div className="flex min-h-14 w-full flex-wrap content-start justify-center gap-x-4 gap-y-1.5">
-                  {rows.map((row) => (
-                    <span
-                      key={row.id}
-                      className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                    >
-                      <span
-                        className="size-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: row.color }}
-                      />
-                      {row.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              <DonutChart
+                data={rows.map((row) => ({
+                  label: row.name,
+                  value: row.amount,
+                  color: row.color,
+                }))}
+                className="size-112 shrink-0 self-center lg:self-start"
+                innerRadius={134}
+                outerRadius={208}
+              />
 
               <div className="flex-1 space-y-3">
                 {rows.map((row) => (
@@ -671,43 +606,36 @@ function BreakdownPanel({
           ) : (
             <ChartContainer config={{}} className="h-[320px] w-full">
               <BarChart
+                accessibilityLayer
                 data={chartData}
-                margin={{ top: 8, right: 8, bottom: 0, left: 8 }}
+                margin={{ left: 12, right: 12 }}
               >
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                <CartesianGrid
+                  vertical={false}
+                  stroke="var(--color-chart-grid)"
+                  strokeDasharray="3 3"
+                />
                 <XAxis
                   dataKey="month"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  tick={{ className: "font-numeric text-xs" }}
-                  tickFormatter={monthLabel}
                   minTickGap={32}
                   interval="preserveStartEnd"
+                  tick={{ className: "font-numeric" }}
+                  tickFormatter={monthLabel}
                 />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
                   width={56}
-                  tick={{ className: "font-numeric text-xs" }}
+                  tick={{ className: "font-numeric" }}
                   tickFormatter={formatCompact}
                 />
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
                       labelFormatter={(value) => monthLabel(String(value))}
-                      formatter={(value, name, item) => (
-                        <span className="flex w-full items-center gap-2">
-                          <span
-                            className="size-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: item?.color }}
-                          />
-                          <span className="text-muted-foreground">{name}</span>
-                          <span className="ml-auto font-numeric font-medium text-foreground">
-                            <Money value={String(value)} />
-                          </span>
-                        </span>
-                      )}
                     />
                   }
                 />

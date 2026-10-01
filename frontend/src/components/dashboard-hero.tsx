@@ -1,6 +1,5 @@
 import { Fragment } from "react"
 import { Link } from "react-router-dom"
-import { Cell, Pie, PieChart } from "recharts"
 
 import type { LiquidityCategory } from "@/types/api"
 import {
@@ -9,11 +8,10 @@ import {
   LIQUIDITY_LABEL,
 } from "@/lib/asset-meta"
 import { cn } from "@/lib/utils"
+import { DonutChart } from "@/components/donut-chart"
 import { Money } from "@/components/money"
 import { StatLabel } from "@/components/stat-label"
-import { useDonutHover } from "@/components/donut-hover"
 import { Card, CardContent } from "@/components/ui/card"
-import { ChartContainer } from "@/components/ui/chart"
 import type { TrendRange } from "@/components/trend-range-selector"
 
 export interface LiquidityEntry {
@@ -157,37 +155,19 @@ function EmptyLiquidity() {
   )
 }
 
-function AllocationDonut({
-  slices,
-  onSliceEnter,
-}: {
-  slices: LiquiditySlice[]
-  onSliceEnter: (index: number) => void
-}) {
+function AllocationDonut({ slices }: { slices: LiquiditySlice[] }) {
   if (slices.length === 0) return null
   return (
-    <ChartContainer
-      config={{}}
-      className="aspect-square size-28 shrink-0 [&_.recharts-sector]:transition-opacity [&_.recharts-sector:hover]:opacity-75"
-    >
-      <PieChart>
-        <Pie
-          data={slices}
-          dataKey="amount"
-          nameKey="label"
-          innerRadius={34}
-          outerRadius={52}
-          paddingAngle={2}
-          strokeWidth={0}
-          isAnimationActive={false}
-          onMouseEnter={(_, index) => onSliceEnter(index)}
-        >
-          {slices.map((slice) => (
-            <Cell key={slice.category} fill={slice.color} />
-          ))}
-        </Pie>
-      </PieChart>
-    </ChartContainer>
+    <DonutChart
+      data={slices.map((slice) => ({
+        label: slice.label,
+        value: slice.amount,
+        color: slice.color,
+      }))}
+      className="size-28 shrink-0"
+      innerRadius={34}
+      outerRadius={52}
+    />
   )
 }
 
@@ -216,17 +196,7 @@ function AllocationLegend({ slices }: { slices: LiquiditySlice[] }) {
 export function DashboardHero({ delta, liquidity, loading, error }: DashboardHeroProps) {
   const { slices, total } = buildSlices(liquidity)
   const hasAssets = total !== 0
-
   const positiveSlices = slices.filter((slice) => slice.amount > 0)
-  const { containerProps, enterSlice, popup } = useDonutHover(
-    positiveSlices.map((slice) => ({
-      id: slice.category,
-      name: slice.label,
-      color: slice.color,
-      value: slice.value,
-      extra: `${slice.pct}%`,
-    })),
-  )
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -248,16 +218,9 @@ export function DashboardHero({ delta, liquidity, loading, error }: DashboardHer
           ) : !hasAssets ? (
             <EmptyLiquidity />
           ) : (
-            <div
-              className="relative flex flex-col gap-4 sm:flex-row sm:items-center"
-              {...containerProps}
-            >
-              <AllocationDonut
-                slices={positiveSlices}
-                onSliceEnter={enterSlice}
-              />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <AllocationDonut slices={positiveSlices} />
               <AllocationLegend slices={slices} />
-              {popup}
             </div>
           )}
         </CardContent>

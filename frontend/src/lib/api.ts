@@ -2,6 +2,7 @@ import type {
   Allocation,
   Asset,
   AssetInput,
+  BotInfo,
   Bucket,
   BucketInput,
   Category,
@@ -9,6 +10,7 @@ import type {
   ImportCommitResult,
   ImportMapping,
   ImportPreview,
+  LinkCodeResponse,
   NetWorthTrendPoint,
   RecurringTemplate,
   RecurringTemplateInput,
@@ -285,7 +287,10 @@ export const api = {
     remove: (id: number) => request<void>(`/api/transfers/${id}`, { method: "DELETE" }),
   },
   telegram: {
+    botInfo: () => request<BotInfo>("/api/telegram/bot"),
     createLinkCode: () =>
-      request<{ code: string }>("/api/telegram/link-code", { method: "POST" }),
+      request<LinkCodeResponse>("/api/telegram/link-code", { method: "POST" }),
+    revokeLinkCodes: () =>
+      request<void>("/api/telegram/link-code", { method: "DELETE" }),
   },
 }

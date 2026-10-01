@@ -219,3 +219,12 @@ export interface RecurringTemplateInput {
   next_occurrence: string
   active: boolean
 }
+
+export interface LinkCodeResponse {
+  code: string
+  expires_in_minutes: number
+}
+
+export interface BotInfo {
+  bot_username: string | null
+}

@@ -1,10 +1,7 @@
-import { Cell, Pie, PieChart } from "recharts"
-
 import type { Allocation, Asset, Bucket } from "@/types/api"
 import { buildAllocationGroups } from "@/lib/allocation"
-import { useDonutHover } from "@/components/donut-hover"
+import { DonutChart } from "@/components/donut-chart"
 import { Money } from "@/components/money"
-import { ChartContainer } from "@/components/ui/chart"
 
 interface AllocationOverviewProps {
   assets: Asset[]
@@ -17,49 +14,23 @@ export function AllocationOverview({
   buckets,
   allocation,
 }: AllocationOverviewProps) {
-  const { groups, total } = buildAllocationGroups(assets, buckets, allocation)
+  const { groups } = buildAllocationGroups(assets, buckets, allocation)
   const slices = groups.filter((group) => group.total > 0)
-
-  const { containerProps, enterSlice, popup } = useDonutHover(
-    slices.map((group) => ({
-      id: group.category,
-      name: group.label,
-      color: group.color,
-      value: group.total.toFixed(2),
-      extra: group.pct !== null ? `${group.pct}%` : undefined,
-    })),
-  )
 
   if (groups.length === 0) return null
 
   return (
     <section className="flex flex-col items-center gap-8 lg:flex-row lg:justify-center lg:gap-14">
-      <div className="relative size-80 shrink-0" {...containerProps}>
-        <ChartContainer config={{}} className="size-80">
-          <PieChart>
-            <Pie
-              data={slices}
-              dataKey="total"
-              nameKey="label"
-              innerRadius={96}
-              outerRadius={148}
-              paddingAngle={2}
-              strokeWidth={0}
-              isAnimationActive={false}
-              onMouseEnter={(_, index) => enterSlice(index)}
-            >
-              {slices.map((group) => (
-                <Cell key={group.category} fill={group.color} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ChartContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-          <span className="text-xs text-muted-foreground">Net worth</span>
-          <Money value={total.toFixed(2)} className="text-lg font-semibold" />
-        </div>
-        {popup}
-      </div>
+      <DonutChart
+        data={slices.map((group) => ({
+          label: group.label,
+          value: group.total,
+          color: group.color,
+        }))}
+        className="size-80 shrink-0"
+        innerRadius={96}
+        outerRadius={148}
+      />
 
       <div className="w-full space-y-4 lg:w-auto">
         {groups.map((group) => (

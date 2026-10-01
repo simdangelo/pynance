@@ -269,11 +269,14 @@ Libreria: Recharts via wrapper `components/ui/chart.tsx` (invariato).
   gradiente soft sotto la linea (arancio 18% → 0%).
 - **Cash flow**: income `--positive`, expense `--destructive`, net `--primary` (tratteggiata
   o più spessa); nessun fill.
-- **Tooltip**: popover `--popover` con hairline, radius 12, ombra raised, testo 12–13px.
+- **Tooltip**: uno solo, quello condiviso (`ChartTooltip`/`ChartTooltipContent`); niente
+  tooltip o popup custom. Popover `--popover` con hairline, radius 12, ombra raised,
+  testo 12–13px.
 - **Ripartizione/classifica**: barre orizzontali sottili con colore categorico e dot di
   legenda; label categoria 12–13px, importi numerici.
-- **Allocazione**: barra composita e/o donut con spessore ~1/3 del raggio, **senza
-  testo al centro**; legenda `dot · nome · importo · %`.
+- **Allocazione**: barra composita e/o donut classico (buco centrale, **senza gap tra le
+  slice**) con spessore ~1/3 del raggio, **senza testo al centro**; legenda
+  `dot · nome · importo · %`.
 - **Flussi**: sola palette semantica/categorica, nessun arco decorativo; i colori seguono la
   categoria.
 - Niente titoli duplicati dentro il grafico: il titolo è della card.

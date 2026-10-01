@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Landmark, Plus } from "lucide-react"
@@ -18,15 +19,14 @@ import { TransferDialog } from "@/components/transfer-dialog"
 import { Button } from "@/components/ui/button"
 import Transfers from "@/pages/transfers"
 
-type AssetsTab = "accounts" | "transfers"
-
 const ASSET_TABS = [
-  { value: "accounts", label: "Accounts" },
-  { value: "transfers", label: "Transfers" },
+  { to: "/assets/accounts", label: "Accounts" },
+  { to: "/assets/transfers", label: "Transfers" },
 ]
 
 export default function Assets() {
-  const [tab, setTab] = useState<AssetsTab>("accounts")
+  const location = useLocation()
+  const isTransfers = location.pathname.endsWith("/transfers")
 
   const [assetDialogOpen, setAssetDialogOpen] = useState(false)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
@@ -79,34 +79,40 @@ export default function Assets() {
     <div className="space-y-5">
       <PageHeader
         title="Assets"
-        tabs={
-          <PageTabs
-            tabs={ASSET_TABS}
-            value={tab}
-            onChange={(value) => setTab(value as AssetsTab)}
-          />
-        }
+        tabs={<PageTabs tabs={ASSET_TABS} />}
         action={
-          tab === "transfers" ? (
+          isTransfers ? (
             <Button onClick={openAddTransfer}>
               <Plus className="mr-1 h-4 w-4" /> Add transfer
             </Button>
           ) : undefined
         }
       />
-      {tab === "transfers" ? (
-        <Transfers
-          onAddTransfer={openAddTransfer}
-          onEditTransfer={openEditTransfer}
+
+      <Routes>
+        <Route index element={<Navigate to="accounts" replace />} />
+        <Route
+          path="accounts"
+          element={
+            <AccountsPanel
+              onAddAsset={openAddAsset}
+              onEditAsset={openEditAsset}
+              onAddBucket={openAddBucket}
+              onEditBucket={openEditBucket}
+            />
+          }
         />
-      ) : (
-        <AccountsPanel
-          onAddAsset={openAddAsset}
-          onEditAsset={openEditAsset}
-          onAddBucket={openAddBucket}
-          onEditBucket={openEditBucket}
+        <Route
+          path="transfers"
+          element={
+            <Transfers
+              onAddTransfer={openAddTransfer}
+              onEditTransfer={openEditTransfer}
+            />
+          }
         />
-      )}
+        <Route path="*" element={<Navigate to="accounts" replace />} />
+      </Routes>
 
       <AssetDialog
         open={assetDialogOpen}

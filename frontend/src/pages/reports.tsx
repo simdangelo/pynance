@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
+import { Navigate, Route, Routes, useSearchParams } from "react-router-dom"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { Filter } from "lucide-react"
 import {
@@ -39,13 +40,12 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 
-type ReportsTab = "cash-flow" | "spending" | "income"
 type Period = "ytd" | "all" | number
 
 const TABS = [
-  { value: "cash-flow", label: "Cash Flow" },
-  { value: "spending", label: "Spending" },
-  { value: "income", label: "Income" },
+  { to: "/reports/cash-flow", label: "Cash Flow" },
+  { to: "/reports/spending", label: "Spending" },
+  { to: "/reports/income", label: "Income" },
 ]
 
 const CHART_COLORS = [
@@ -113,8 +113,23 @@ function periodMonths(period: Period, firstMonth: string | null): number {
 }
 
 export default function Reports() {
-  const [tab, setTab] = useState<ReportsTab>("cash-flow")
-  const [period, setPeriod] = useState<Period>("ytd")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const periodParam = searchParams.get("period")
+  const period: Period = /^\d{4}$/.test(periodParam ?? "")
+    ? Number(periodParam)
+    : periodParam === "all"
+      ? "all"
+      : "ytd"
+
+  const setPeriod = (next: Period) => {
+    const params = new URLSearchParams(searchParams)
+    if (next === "ytd") {
+      params.delete("period")
+    } else {
+      params.set("period", String(next))
+    }
+    setSearchParams(params, { replace: true })
+  }
 
   const { data: allTimeTrend } = useQuery({
     queryKey: ["trend", "all"],
@@ -139,13 +154,7 @@ export default function Reports() {
     <div className="space-y-5">
       <PageHeader
         title="Reports"
-        tabs={
-          <PageTabs
-            tabs={TABS}
-            value={tab}
-            onChange={(value) => setTab(value as ReportsTab)}
-          />
-        }
+        tabs={<PageTabs tabs={TABS} />}
         action={
           <Select
             value={String(period)}
@@ -173,15 +182,26 @@ export default function Reports() {
         }
       />
 
-      {tab === "cash-flow" ? (
-        <CashFlowPanel period={period} months={months} />
-      ) : (
-        <BreakdownPanel
-          type={tab === "income" ? "income" : "expense"}
-          period={period}
-          months={months}
+      <Routes>
+        <Route index element={<Navigate to="cash-flow" replace />} />
+        <Route
+          path="cash-flow"
+          element={<CashFlowPanel period={period} months={months} />}
         />
-      )}
+        <Route
+          path="spending"
+          element={
+            <BreakdownPanel type="expense" period={period} months={months} />
+          }
+        />
+        <Route
+          path="income"
+          element={
+            <BreakdownPanel type="income" period={period} months={months} />
+          }
+        />
+        <Route path="*" element={<Navigate to="cash-flow" replace />} />
+      </Routes>
     </div>
   )
 }

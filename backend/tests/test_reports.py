@@ -160,8 +160,10 @@ def test_trend(client: TestClient) -> None:
     by_month = {(point["year"], point["month"]): point for point in data}
     assert by_month[(2026, 7)]["expense"] == "10.00"
     assert by_month[(2026, 7)]["income"] == "0"
+    assert by_month[(2026, 7)]["count"] == 1
     assert by_month[(2026, 8)]["expense"] == "20.50"
     assert by_month[(2026, 8)]["income"] == "100.00"
+    assert by_month[(2026, 8)]["count"] == 2
 
 
 def test_trend_empty_range(client: TestClient) -> None:

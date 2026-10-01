@@ -13,12 +13,17 @@ import { BucketDeleteDialog } from "@/components/bucket-delete-dialog"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { PageHeader } from "@/components/page-header"
+import { PageTabs } from "@/components/page-tabs"
 import { TransferDialog } from "@/components/transfer-dialog"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import Transfers from "@/pages/transfers"
 
 type AssetsTab = "accounts" | "transfers"
+
+const ASSET_TABS = [
+  { value: "accounts", label: "Accounts" },
+  { value: "transfers", label: "Transfers" },
+]
 
 export default function Assets() {
   const [tab, setTab] = useState<AssetsTab>("accounts")
@@ -74,7 +79,13 @@ export default function Assets() {
     <div className="space-y-5">
       <PageHeader
         title="Assets"
-        tabs={<AssetTabs value={tab} onChange={setTab} />}
+        tabs={
+          <PageTabs
+            tabs={ASSET_TABS}
+            value={tab}
+            onChange={(value) => setTab(value as AssetsTab)}
+          />
+        }
         action={
           tab === "transfers" ? (
             <Button onClick={openAddTransfer}>
@@ -116,47 +127,6 @@ export default function Assets() {
         onOpenChange={setTransferDialogOpen}
         transfer={editingTransfer}
       />
-    </div>
-  )
-}
-
-function AssetTabs({
-  value,
-  onChange,
-}: {
-  value: AssetsTab
-  onChange: (tab: AssetsTab) => void
-}) {
-  const tabs: { value: AssetsTab; label: string }[] = [
-    { value: "accounts", label: "Accounts" },
-    { value: "transfers", label: "Transfers" },
-  ]
-
-  return (
-    <div className="flex items-baseline gap-5">
-      {tabs.map((tab) => {
-        const active = value === tab.value
-        return (
-          <button
-            key={tab.value}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(tab.value)}
-            className={cn(
-              "relative cursor-pointer text-lg font-medium transition-colors",
-              active ? "text-primary" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {tab.label}
-            <span
-              className={cn(
-                "absolute inset-x-0 -bottom-1.5 h-0.5 rounded-full bg-primary transition-opacity",
-                active ? "opacity-100" : "opacity-0",
-              )}
-            />
-          </button>
-        )
-      })}
     </div>
   )
 }

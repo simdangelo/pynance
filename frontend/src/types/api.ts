@@ -177,6 +177,7 @@ export interface TrendPoint {
   month: number
   income: string
   expense: string
+  count: number
 }
 
 export interface TrendByCategoryPoint {

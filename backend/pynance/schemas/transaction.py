@@ -54,6 +54,7 @@ class TrendPointResponse(BaseModel):
     month: int
     expense: Decimal
     income: Decimal
+    count: int
 
 
 class TrendByCategoryPointResponse(BaseModel):

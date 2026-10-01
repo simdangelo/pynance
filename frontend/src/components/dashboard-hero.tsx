@@ -11,8 +11,9 @@ import {
 import { cn } from "@/lib/utils"
 import { Money } from "@/components/money"
 import { StatLabel } from "@/components/stat-label"
+import { useDonutHover } from "@/components/donut-hover"
 import { Card, CardContent } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer } from "@/components/ui/chart"
 import type { TrendRange } from "@/components/trend-range-selector"
 
 export interface LiquidityEntry {
@@ -156,9 +157,14 @@ function EmptyLiquidity() {
   )
 }
 
-function AllocationDonut({ slices }: { slices: LiquiditySlice[] }) {
-  const positive = slices.filter((slice) => slice.amount > 0)
-  if (positive.length === 0) return null
+function AllocationDonut({
+  slices,
+  onSliceEnter,
+}: {
+  slices: LiquiditySlice[]
+  onSliceEnter: (index: number) => void
+}) {
+  if (slices.length === 0) return null
   return (
     <ChartContainer
       config={{}}
@@ -166,7 +172,7 @@ function AllocationDonut({ slices }: { slices: LiquiditySlice[] }) {
     >
       <PieChart>
         <Pie
-          data={positive}
+          data={slices}
           dataKey="amount"
           nameKey="label"
           innerRadius={34}
@@ -174,38 +180,12 @@ function AllocationDonut({ slices }: { slices: LiquiditySlice[] }) {
           paddingAngle={2}
           strokeWidth={0}
           isAnimationActive={false}
+          onMouseEnter={(_, index) => onSliceEnter(index)}
         >
-          {positive.map((slice) => (
+          {slices.map((slice) => (
             <Cell key={slice.category} fill={slice.color} />
           ))}
         </Pie>
-        <ChartTooltip
-          content={
-            <ChartTooltipContent
-              hideLabel
-              formatter={(value, name, item) => {
-                const slice = item?.payload as LiquiditySlice | undefined
-                return (
-                  <span className="flex w-full items-center gap-2">
-                    <span
-                      className="size-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: slice?.color }}
-                    />
-                    <span className="text-muted-foreground">{name}</span>
-                    <span className="ml-auto font-numeric font-medium text-foreground">
-                      <Money value={String(value)} />
-                    </span>
-                    {slice && (
-                      <span className="font-numeric text-muted-foreground">
-                        {slice.pct}%
-                      </span>
-                    )}
-                  </span>
-                )
-              }}
-            />
-          }
-        />
       </PieChart>
     </ChartContainer>
   )
@@ -237,6 +217,17 @@ export function DashboardHero({ delta, liquidity, loading, error }: DashboardHer
   const { slices, total } = buildSlices(liquidity)
   const hasAssets = total !== 0
 
+  const positiveSlices = slices.filter((slice) => slice.amount > 0)
+  const { containerProps, enterSlice, popup } = useDonutHover(
+    positiveSlices.map((slice) => ({
+      id: slice.category,
+      name: slice.label,
+      color: slice.color,
+      value: slice.value,
+      extra: `${slice.pct}%`,
+    })),
+  )
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
@@ -257,9 +248,16 @@ export function DashboardHero({ delta, liquidity, loading, error }: DashboardHer
           ) : !hasAssets ? (
             <EmptyLiquidity />
           ) : (
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <AllocationDonut slices={slices} />
+            <div
+              className="relative flex flex-col gap-4 sm:flex-row sm:items-center"
+              {...containerProps}
+            >
+              <AllocationDonut
+                slices={positiveSlices}
+                onSliceEnter={enterSlice}
+              />
               <AllocationLegend slices={slices} />
+              {popup}
             </div>
           )}
         </CardContent>

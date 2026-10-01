@@ -232,6 +232,7 @@ class TrendPoint:
     month: int
     income: Decimal
     expense: Decimal
+    count: int
 
 
 def get_trend(db: Session, user_id: int, date_range: DataRange) -> list[TrendPoint]:
@@ -239,7 +240,13 @@ def get_trend(db: Session, user_id: int, date_range: DataRange) -> list[TrendPoi
     month_expr = func.extract("month", Transaction.occurred_on)
 
     rows = db.execute(
-        select(year_expr, month_expr, Category.transaction_type, func.sum(Transaction.amount))
+        select(
+            year_expr,
+            month_expr,
+            Category.transaction_type,
+            func.sum(Transaction.amount),
+            func.count(Transaction.id),
+        )
         .join(Category, Category.id == Transaction.category_id)
         .where(
             Transaction.user_id == user_id,
@@ -251,12 +258,19 @@ def get_trend(db: Session, user_id: int, date_range: DataRange) -> list[TrendPoi
     ).all()
 
     trends: dict[tuple[int, int], TrendPoint] = {}
-    for year, month, transaction_type, amount in rows:
+    for year, month, transaction_type, amount, count in rows:
         key = (int(year), int(month))
         trend = trends.setdefault(
             key,
-            TrendPoint(year=int(year), month=int(month), income=Decimal("0"), expense=Decimal("0")),
+            TrendPoint(
+                year=int(year),
+                month=int(month),
+                income=Decimal("0"),
+                expense=Decimal("0"),
+                count=0,
+            ),
         )
+        trend.count += count
 
         if transaction_type == "income":
             trend.income = amount

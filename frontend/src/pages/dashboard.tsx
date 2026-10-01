@@ -171,7 +171,7 @@ export default function Dashboard() {
                   stroke="var(--color-primary)"
                   strokeWidth={2.5}
                   fill="url(#netWorthFill)"
-                  dot={false}
+                  dot={trendData.length <= 24 ? { r: 2.5 } : false}
                   activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />

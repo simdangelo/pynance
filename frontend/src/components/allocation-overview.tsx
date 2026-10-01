@@ -35,7 +35,7 @@ export function AllocationOverview({
       <div className="w-full space-y-4 lg:w-auto">
         {groups.map((group) => (
           <div key={group.category} className="space-y-1.5">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <span className="flex items-center gap-2 text-sm font-semibold">
                 <span
                   className="size-2 shrink-0 rounded-full"
@@ -48,7 +48,13 @@ export function AllocationOverview({
                 className="text-sm font-medium"
               />
               {group.pct !== null && (
-                <span className="rounded-full bg-muted px-1.5 py-0.5 font-numeric text-[11px] font-medium text-muted-foreground">
+                <span
+                  className="rounded-md px-1.5 py-0.5 font-numeric text-sm font-semibold"
+                  style={{
+                    color: group.color,
+                    backgroundColor: `color-mix(in srgb, ${group.color} 14%, transparent)`,
+                  }}
+                >
                   {group.pct}%
                 </span>
               )}

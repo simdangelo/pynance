@@ -8,8 +8,9 @@ import type { Category } from "@/types/api"
 import { CategoryDialog } from "@/components/category-dialog"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { EmptyState } from "@/components/empty-state"
+import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -20,8 +21,8 @@ import {
 } from "@/components/ui/table"
 
 const TYPE_META = {
-  expense: { label: "Expense", dot: "var(--color-clay)" },
-  income: { label: "Income", dot: "var(--color-moss)" },
+  expense: { label: "Expense", dot: "bg-destructive" },
+  income: { label: "Income", dot: "bg-positive" },
 } as const
 
 export default function Categories() {
@@ -72,84 +73,84 @@ export default function Categories() {
     const meta = TYPE_META[type]
     const items = groups[type]
     return (
-      <section>
-        <div className="mb-2 flex items-center gap-2">
-          <span className="size-2 rounded-full" style={{ backgroundColor: meta.dot }} />
-          <span className="text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase">
+      <Card className="gap-0 overflow-hidden py-0">
+        <CardHeader className="py-4">
+          <CardTitle className="flex items-center gap-2">
+            <span className={`size-2 shrink-0 rounded-full ${meta.dot}`} />
             {meta.label}
-          </span>
-          <span className="ml-auto font-numeric text-xs text-muted-foreground/70">
-            {items.length}
-          </span>
-        </div>
-        <Card className="p-0">
-          <CardContent className="p-0">
-            {items.length === 0 ? (
-              <EmptyState
-                icon={Tags}
-                title={`No ${meta.label.toLowerCase()} categories yet`}
-                subtitle="Add one to tag your transactions."
-                className="py-8"
-              />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
+            <span className="rounded-full bg-muted px-2 py-0.5 font-numeric text-[11px] font-medium text-muted-foreground">
+              {items.length}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {items.length === 0 ? (
+            <EmptyState
+              icon={Tags}
+              title={`No ${meta.label.toLowerCase()} categories yet`}
+              subtitle="Add one to tag your transactions."
+            />
+          ) : (
+            <Table>
+              <TableHeader className="sr-only">
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((category) => (
+                  <TableRow key={category.id}>
+                    <TableCell className="font-medium">{category.name}</TableCell>
+                    <TableCell className="w-[1%] text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground"
+                          aria-label={`Edit ${category.name}`}
+                          onClick={() => openEdit(category)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground"
+                          aria-label={`Delete ${category.name}`}
+                          onClick={() => setDeleteTarget(category)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((category) => (
-                    <TableRow key={category.id}>
-                      <TableCell className="font-medium">{category.name}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Edit ${category.name}`}
-                            onClick={() => openEdit(category)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Delete ${category.name}`}
-                            onClick={() => setDeleteTarget(category)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </section>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     )
   }
 
   return (
     <div className="space-y-5">
-      {/* Add action */}
-      <div className="flex flex-wrap items-center justify-end gap-4">
-        <Button onClick={openCreate}>
-          <Plus className="mr-1 h-4 w-4" /> Add category
-        </Button>
-      </div>
+      <PageHeader
+        title="Categories"
+        action={
+          <Button onClick={openCreate}>
+            <Plus className="mr-1 h-4 w-4" /> Add category
+          </Button>
+        }
+      />
 
-      {/* Two tables: income / expense */}
       {isLoading ? (
         <p className="py-6 text-sm text-muted-foreground">Loading…</p>
       ) : isError ? (
         <p className="py-6 text-sm text-destructive">Failed to load categories.</p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
           {renderGroup("expense")}
           {renderGroup("income")}
         </div>

@@ -46,6 +46,10 @@ class AssetNotLiquidError(Exception):
     pass
 
 
+class AdjustmentNotFoundError(Exception):
+    pass
+
+
 class BucketNotFoundError(Exception):
     pass
 

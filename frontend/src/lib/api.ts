@@ -2,6 +2,7 @@ import type {
   Allocation,
   Asset,
   AssetInput,
+  BalanceAdjustment,
   BotInfo,
   Bucket,
   BucketInput,
@@ -12,6 +13,8 @@ import type {
   ImportPreview,
   LinkCodeResponse,
   NetWorthTrendPoint,
+  ReconciliationInput,
+  ReconciliationResult,
   RecurringTemplate,
   RecurringTemplateInput,
   Summary,
@@ -246,6 +249,18 @@ export const api = {
         `/api/assets/net-worth-trend?start_date=${startDate}&end_date=${endDate}`,
       ),
     allocation: () => request<Allocation>("/api/assets/allocation"),
+  },
+  adjustments: {
+    reconcile: (data: ReconciliationInput) =>
+      request<ReconciliationResult>("/api/adjustments/reconcile", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    list: (assetId?: number) =>
+      request<BalanceAdjustment[]>(
+        `/api/adjustments${assetId ? `?asset_id=${assetId}` : ""}`,
+      ),
+    remove: (id: number) => request<void>(`/api/adjustments/${id}`, { method: "DELETE" }),
   },
   buckets: {
     list: () => request<Bucket[]>("/api/buckets"),

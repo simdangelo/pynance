@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { PageHeader } from "@/components/page-header"
 import { PageTabs } from "@/components/page-tabs"
+import { ReconcilePanel } from "@/components/reconcile-panel"
 import { TransferDialog } from "@/components/transfer-dialog"
 import { Button } from "@/components/ui/button"
 import Transfers from "@/pages/transfers"
@@ -22,6 +23,7 @@ import Transfers from "@/pages/transfers"
 const ASSET_TABS = [
   { to: "/assets/accounts", label: "Accounts" },
   { to: "/assets/transfers", label: "Transfers" },
+  { to: "/assets/reconcile", label: "Reconcile" },
 ]
 
 export default function Assets() {
@@ -111,6 +113,7 @@ export default function Assets() {
             />
           }
         />
+        <Route path="reconcile" element={<ReconcilePanel />} />
         <Route path="*" element={<Navigate to="accounts" replace />} />
       </Routes>
 

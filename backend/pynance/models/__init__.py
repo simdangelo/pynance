@@ -1,3 +1,4 @@
+from pynance.models.adjustment import BalanceAdjustment
 from pynance.models.asset import Asset
 from pynance.models.bucket import Bucket
 from pynance.models.category import Category
@@ -12,6 +13,7 @@ from pynance.models.user import User
 __all__ = [
     "Asset",
     "AssetClass",
+    "BalanceAdjustment",
     "Bucket",
     "Category",
     "Frequency",

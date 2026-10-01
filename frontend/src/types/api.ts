@@ -228,3 +228,30 @@ export interface LinkCodeResponse {
 export interface BotInfo {
   bot_username: string | null
 }
+
+export interface BalanceAdjustment {
+  id: number
+  asset_id: number
+  amount: string
+  occurred_on: string
+  note: string | null
+  created_at: string
+}
+
+export interface ReconciliationInput {
+  occurred_on: string
+  note: string | null
+  rows: { asset_id: number; declared_balance: string }[]
+}
+
+export interface ReconciliationRowResult {
+  asset_id: number
+  balance: string
+  declared_balance: string
+  delta: string
+}
+
+export interface ReconciliationResult {
+  adjustments: BalanceAdjustment[]
+  rows: ReconciliationRowResult[]
+}

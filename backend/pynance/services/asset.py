@@ -6,6 +6,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from pynance.models.adjustment import BalanceAdjustment
 from pynance.models.asset import Asset
 from pynance.models.bucket import Bucket
 from pynance.models.category import Category
@@ -146,8 +147,8 @@ def delete_asset(db: Session, user_id: int, asset_id: int) -> Asset:
     except IntegrityError as e:
         db.rollback()
         raise AssetInUseError(
-            f"Asset with id '{asset_id}' is associated to one or more transactions or transfers."
-            " You can't delete it"
+            f"Asset with id '{asset_id}' is associated to one or more transactions,"
+            " transfers or adjustments. You can't delete it"
         ) from e
     return asset
 
@@ -203,6 +204,16 @@ def get_asset_balances(db: Session, user_id: int) -> dict[int, Decimal]:
         .group_by(Transfer.source_asset_id)
     ).all()
 
+    # Conguagli di saldo (rettifiche di riconciliazione, importo con segno)
+    adjustment_sums = db.execute(
+        select(
+            BalanceAdjustment.asset_id,
+            func.coalesce(func.sum(BalanceAdjustment.amount), 0),
+        )
+        .where(BalanceAdjustment.user_id == user_id)
+        .group_by(BalanceAdjustment.asset_id)
+    ).all()
+
     balances: dict[int, Decimal] = {}
     for asset_id, opening_balance in opening_balances:
         balances[int(asset_id)] = Decimal(opening_balance or 0)
@@ -212,6 +223,8 @@ def get_asset_balances(db: Session, user_id: int) -> dict[int, Decimal]:
         balances[int(asset_id)] = balances.get(int(asset_id), Decimal("0")) + Decimal(amount or 0)
     for asset_id, amount in transfer_outs:
         balances[int(asset_id)] = balances.get(int(asset_id), Decimal("0")) - Decimal(amount or 0)
+    for asset_id, amount in adjustment_sums:
+        balances[int(asset_id)] = balances.get(int(asset_id), Decimal("0")) + Decimal(amount or 0)
 
     return balances
 
@@ -234,11 +247,17 @@ def _shift_month(year: int, month: int) -> tuple[int, int]:
 def get_net_worth_trend(
     db: Session, user_id: int, start_date: date, end_date: date
 ) -> list[NetWorthTrendPoint]:
-    earliest = db.execute(
+    earliest_transaction = db.execute(
         select(func.min(Transaction.occurred_on)).where(Transaction.user_id == user_id)
     ).scalar_one()
-    if earliest is not None:
-        start_date = max(start_date, earliest)
+    earliest_adjustment = db.execute(
+        select(func.min(BalanceAdjustment.occurred_on)).where(BalanceAdjustment.user_id == user_id)
+    ).scalar_one()
+    earliest_dates = [
+        value for value in (earliest_transaction, earliest_adjustment) if value is not None
+    ]
+    if earliest_dates:
+        start_date = max(start_date, min(earliest_dates))
 
     opening_total = db.execute(
         select(func.coalesce(func.sum(Asset.opening_balance), 0)).where(Asset.user_id == user_id)
@@ -260,6 +279,13 @@ def get_net_worth_trend(
         .select_from(Transaction)
         .join(Category, Transaction.category_id == Category.id)
         .where(Transaction.user_id == user_id, Transaction.occurred_on < start_date)
+    ).scalar_one()
+
+    prior_adjustments = db.execute(
+        select(func.coalesce(func.sum(BalanceAdjustment.amount), 0)).where(
+            BalanceAdjustment.user_id == user_id,
+            BalanceAdjustment.occurred_on < start_date,
+        )
     ).scalar_one()
 
     transaction_nets = db.execute(
@@ -294,15 +320,37 @@ def get_net_worth_trend(
         )
     ).all()
 
-    transaction_nets_by_month: dict[tuple[int, int], Decimal] = {}
-    for year, month, net in transaction_nets:
-        transaction_nets_by_month[(int(year), int(month))] = Decimal(net or 0)
+    adjustment_nets = db.execute(
+        select(
+            func.extract("year", BalanceAdjustment.occurred_on),
+            func.extract("month", BalanceAdjustment.occurred_on),
+            func.coalesce(func.sum(BalanceAdjustment.amount), 0),
+        )
+        .where(
+            BalanceAdjustment.user_id == user_id,
+            BalanceAdjustment.occurred_on >= start_date,
+            BalanceAdjustment.occurred_on <= end_date,
+        )
+        .group_by(
+            func.extract("year", BalanceAdjustment.occurred_on),
+            func.extract("month", BalanceAdjustment.occurred_on),
+        )
+    ).all()
 
-    running = Decimal(opening_total or 0) + Decimal(prior_total or 0)
+    nets_by_month: dict[tuple[int, int], Decimal] = {}
+    for year, month, net in transaction_nets:
+        nets_by_month[(int(year), int(month))] = Decimal(net or 0)
+    for year, month, net in adjustment_nets:
+        key = (int(year), int(month))
+        nets_by_month[key] = nets_by_month.get(key, Decimal("0")) + Decimal(net or 0)
+
+    running = (
+        Decimal(opening_total or 0) + Decimal(prior_total or 0) + Decimal(prior_adjustments or 0)
+    )
     points: list[NetWorthTrendPoint] = []
     year, month = start_date.year, start_date.month
     while (year, month) <= (end_date.year, end_date.month):
-        running += transaction_nets_by_month.get((year, month), Decimal("0"))
+        running += nets_by_month.get((year, month), Decimal("0"))
         points.append(NetWorthTrendPoint(year, month, running))
         year, month = _shift_month(year, month)
 

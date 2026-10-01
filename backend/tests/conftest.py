@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from pynance.api.main import app
 from pynance.database import Base, get_db
+from pynance.models.adjustment import BalanceAdjustment
 from pynance.models.asset import Asset
 from pynance.models.bucket import Bucket
 from pynance.models.category import Category
@@ -44,6 +45,7 @@ def db_session(setup_database: Generator[None]) -> Generator[Session]:
     session.execute(delete(Transaction))
     session.execute(delete(RecurringTemplate))
     session.execute(delete(Category))
+    session.execute(delete(BalanceAdjustment))
     session.execute(delete(Asset))
     session.execute(delete(Bucket))
     session.execute(delete(User))

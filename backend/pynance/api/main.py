@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from pynance.api.routers import (
+    adjustment,
     asset,
     auth,
     bucket,
@@ -114,6 +115,7 @@ app.include_router(
     tags=["recurring-template"],
 )
 app.include_router(asset.router, prefix="/api/assets", tags=["assets"])
+app.include_router(adjustment.router, prefix="/api/adjustments", tags=["adjustments"])
 app.include_router(bucket.router, prefix="/api/buckets", tags=["buckets"])
 app.include_router(transfer.router, prefix="/api/transfers", tags=["transfers"])
 app.include_router(telegram.router, prefix="/api/telegram", tags=["telegram"])

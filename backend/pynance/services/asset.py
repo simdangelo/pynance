@@ -16,9 +16,23 @@ from pynance.schemas.asset import AssetCreate, AssetUpdate
 from pynance.services.exceptions import (
     AssetInUseError,
     AssetNotFoundError,
+    AssetNotLiquidError,
     BucketNotFoundError,
     DuplicateAssetNameError,
 )
+
+
+def ensure_liquid_asset(asset: Asset) -> None:
+    """Transactions (income/expense) may only use liquid assets.
+
+    Money moves to reserve/investment assets through transfers (or, for
+    yields, through balance adjustments), so a transaction on a non-liquid
+    asset would break that model.
+    """
+    if asset.liquidity_category != LiquidityCategory.LIQUID:
+        raise AssetNotLiquidError(
+            f"Asset '{asset.name}' is not liquid: transactions can only use liquid assets"
+        )
 
 
 def _validate_bucket(db: Session, user_id: int, bucket_id: int) -> Bucket:

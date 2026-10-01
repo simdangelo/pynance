@@ -1,6 +1,55 @@
+from typing import Any
+
 from fastapi.testclient import TestClient
 
-from tests.conftest import create_category, create_transaction
+from tests.conftest import create_asset, create_category, create_transaction
+
+
+def _non_liquid_asset(client: TestClient) -> dict[str, Any]:
+    buckets = client.get("/api/buckets").json()
+    reserve = next(bucket for bucket in buckets if bucket["liquidity_category"] == "reserve")
+    return create_asset(
+        client,
+        name="Deposit",
+        asset_class="deposit_account",
+        bucket_id=reserve["id"],
+    )
+
+
+def test_create_transaction_on_non_liquid_asset_returns_422(client: TestClient) -> None:
+    asset = _non_liquid_asset(client)
+    category = create_category(client, "groceries", "expense")
+
+    response = client.post(
+        "/api/transactions",
+        json={
+            "amount": "12.34",
+            "category_id": category["id"],
+            "description": "should not work",
+            "occurred_on": "2026-08-05",
+            "asset_id": asset["id"],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_transaction_to_non_liquid_asset_returns_422(client: TestClient) -> None:
+    category = create_category(client, "groceries", "expense")
+    transaction = create_transaction(
+        client,
+        amount="12.34",
+        category_id=category["id"],
+        description="weekly groceries",
+        occurred_on="2026-08-05",
+    )
+    asset = _non_liquid_asset(client)
+
+    response = client.patch(
+        f"/api/transactions/{transaction['id']}", json={"asset_id": asset["id"]}
+    )
+
+    assert response.status_code == 422
 
 
 def test_create_transaction(client: TestClient, liquid_asset: int) -> None:

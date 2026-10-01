@@ -30,6 +30,7 @@ from pynance.models.category import Category
 from pynance.models.transaction import Transaction
 from pynance.models.types import TransactionType
 from pynance.schemas.import_data import ImportMapping
+from pynance.services.asset import ensure_liquid_asset
 from pynance.services.exceptions import AssetNotFoundError, CategoryNotFoundError
 
 CSV_ENCODINGS = ("utf-8-sig", "utf-8", "cp1252", "latin-1")
@@ -602,6 +603,7 @@ def commit(
     effective = options.mapping or suggest_mapping(table)
     rows = parse_rows(table, replace(options, mapping=effective))
     asset = _get_asset(db, user_id, asset_id)
+    ensure_liquid_asset(asset)
 
     transaction_ids: list[int] = []
     skipped = 0

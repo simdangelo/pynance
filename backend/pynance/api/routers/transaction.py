@@ -23,6 +23,7 @@ from pynance.schemas.transaction import (
 from pynance.services import transaction as transaction_service
 from pynance.services.exceptions import (
     AssetNotFoundError,
+    AssetNotLiquidError,
     CategoryNotFoundError,
     MonthWithoutYearError,
     TransactionNotFoundError,
@@ -47,6 +48,8 @@ def create_transaction(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Asset doesn't exist"
         ) from e
+    except AssetNotLiquidError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)) from e
     return result
 
 
@@ -155,6 +158,8 @@ def update_transaction(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Asset doesn't exist"
         ) from e
+    except AssetNotLiquidError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)) from e
     return result
 
 

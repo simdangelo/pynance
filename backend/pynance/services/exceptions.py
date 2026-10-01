@@ -42,6 +42,10 @@ class AssetInUseError(Exception):
     pass
 
 
+class AssetNotLiquidError(Exception):
+    pass
+
+
 class BucketNotFoundError(Exception):
     pass
 

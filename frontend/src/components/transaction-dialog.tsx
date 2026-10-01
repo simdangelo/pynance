@@ -114,9 +114,16 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
     [categories, draft.categoryId],
   )
 
+  // Income/expenses only happen on liquid assets; money reaches reserve and
+  // investment assets through transfers.
+  const liquidAssets = useMemo(
+    () => (assets ?? []).filter((asset) => asset.liquidity_category === "liquid"),
+    [assets],
+  )
+
   const selectedAsset = useMemo(
-    () => assets?.find((a) => String(a.id) === draft.assetId),
-    [assets, draft.assetId],
+    () => liquidAssets.find((a) => String(a.id) === draft.assetId),
+    [liquidAssets, draft.assetId],
   )
 
   const handleTypeChange = (newType: TransactionType) => setType(newType)
@@ -203,9 +210,10 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
           {/* Asset */}
           <div className="space-y-1.5">
             <Label>Asset</Label>
-            {assets && assets.length === 0 ? (
+            {liquidAssets.length === 0 ? (
               <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
-                No assets yet. Create one in the Assets page first.
+                No liquid assets yet. Create one in the Assets page first —
+                income and expenses can only use liquid assets.
               </div>
             ) : (
               <Select
@@ -227,7 +235,7 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {assets?.map((asset) => (
+                  {liquidAssets.map((asset) => (
                     <SelectItem key={asset.id} value={String(asset.id)}>
                       {asset.name}
                     </SelectItem>

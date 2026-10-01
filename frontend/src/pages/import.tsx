@@ -88,7 +88,7 @@ const DELIMITERS = [
 ]
 
 function preferredAsset(assets: Asset[]): Asset | undefined {
-  return assets.find((asset) => asset.liquidity_category === "liquid") ?? assets[0]
+  return assets.find((asset) => asset.liquidity_category === "liquid")
 }
 
 function ParsingIndicator({ active }: { active: boolean }) {
@@ -138,6 +138,13 @@ export default function ImportData() {
     queryKey: ["categories"],
     queryFn: api.categories.list,
   })
+
+  // Transactions can only live on liquid assets; money reaches the others
+  // through transfers.
+  const liquidAssets = useMemo(
+    () => (assets ?? []).filter((asset) => asset.liquidity_category === "liquid"),
+    [assets],
+  )
 
   const previewMutation = useMutation({
     mutationFn: (config: Parameters<typeof api.importData.preview>[1]) =>
@@ -539,31 +546,38 @@ export default function ImportData() {
             <CardContent>
               <div className="max-w-sm space-y-1.5">
                 <Label>Asset</Label>
-                <Select
-                  value={assetId}
-                  disabled={busy}
-                  onValueChange={(value) => {
-                    if (!value) return
-                    setAssetId(value)
-                    runPreview({ assetId: value })
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue>
-                      {assets?.find((asset) => String(asset.id) === assetId)?.name ??
-                        "Select an asset"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assets?.map((asset) => (
-                      <SelectItem key={asset.id} value={String(asset.id)}>
-                        {asset.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {liquidAssets.length === 0 ? (
+                  <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
+                    No liquid assets yet. Create one in the Assets page first —
+                    transactions can only use liquid assets.
+                  </div>
+                ) : (
+                  <Select
+                    value={assetId}
+                    disabled={busy}
+                    onValueChange={(value) => {
+                      if (!value) return
+                      setAssetId(value)
+                      runPreview({ assetId: value })
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue>
+                        {liquidAssets.find((asset) => String(asset.id) === assetId)?.name ??
+                          "Select an asset"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {liquidAssets.map((asset) => (
+                        <SelectItem key={asset.id} value={String(asset.id)}>
+                          {asset.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  Which account these transactions belong to.
+                  Which account these transactions belong to (liquid only).
                 </p>
               </div>
             </CardContent>

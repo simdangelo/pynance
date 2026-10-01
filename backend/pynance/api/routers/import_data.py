@@ -16,7 +16,11 @@ from pynance.schemas.import_data import (
     RowCategory,
 )
 from pynance.services import importer
-from pynance.services.exceptions import AssetNotFoundError, CategoryNotFoundError
+from pynance.services.exceptions import (
+    AssetNotFoundError,
+    AssetNotLiquidError,
+    CategoryNotFoundError,
+)
 from pynance.services.importer import ParsedRow, PreviewResult
 
 router = APIRouter()
@@ -153,6 +157,10 @@ def commit(
         )
     except (AssetNotFoundError, CategoryNotFoundError) as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+    except AssetNotLiquidError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)
+        ) from error
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
     return ImportCommitResponse(

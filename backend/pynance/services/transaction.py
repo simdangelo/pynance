@@ -15,6 +15,7 @@ from pynance.schemas.transaction import (
     TransactionCreate,
     TransactionUpdate,
 )
+from pynance.services.asset import ensure_liquid_asset
 from pynance.services.exceptions import (
     AssetNotFoundError,
     CategoryNotFoundError,
@@ -25,14 +26,17 @@ from pynance.services.exceptions import (
 
 def create_transaction(db: Session, user_id: int, transaction: TransactionCreate) -> Transaction:
     category = db.execute(
-        select(Category).where(Category.id == transaction.category_id)
+        select(Category).where(Category.id == transaction.category_id, Category.user_id == user_id)
     ).scalar_one_or_none()
     if category is None:
         raise CategoryNotFoundError(f"Category with id '{transaction.category_id}' doesn't exist")
 
-    asset = db.execute(select(Asset).where(Asset.id == transaction.asset_id)).scalar_one_or_none()
+    asset = db.execute(
+        select(Asset).where(Asset.id == transaction.asset_id, Asset.user_id == user_id)
+    ).scalar_one_or_none()
     if asset is None:
         raise AssetNotFoundError(f"Asset with id '{transaction.asset_id}' doesn't exist")
+    ensure_liquid_asset(asset)
 
     new_transaction = Transaction(
         amount=transaction.amount,
@@ -67,15 +71,18 @@ def update_transaction(
         update.category_id if update.category_id is not None else transaction.category_id
     )
     category = db.execute(
-        select(Category).where(Category.id == new_category_id)
+        select(Category).where(Category.id == new_category_id, Category.user_id == user_id)
     ).scalar_one_or_none()
     if category is None:
         raise CategoryNotFoundError(f"Category with id '{new_category_id}' doesn't exist")
 
     new_asset_id = update.asset_id if update.asset_id is not None else transaction.asset_id
-    asset = db.execute(select(Asset).where(Asset.id == new_asset_id)).scalar_one_or_none()
+    asset = db.execute(
+        select(Asset).where(Asset.id == new_asset_id, Asset.user_id == user_id)
+    ).scalar_one_or_none()
     if asset is None:
         raise AssetNotFoundError(f"Asset with id '{new_asset_id}' doesn't exist")
+    ensure_liquid_asset(asset)
 
     for field_to_update, value in update.model_dump(exclude_unset=True).items():
         setattr(transaction, field_to_update, value)

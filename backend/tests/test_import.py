@@ -312,6 +312,29 @@ def test_commit_requires_an_asset(client: TestClient) -> None:
     assert response.status_code == 422
 
 
+def test_commit_refuses_non_liquid_asset(client: TestClient) -> None:
+    buckets = client.get("/api/buckets").json()
+    reserve = next(bucket for bucket in buckets if bucket["liquidity_category"] == "reserve")
+    asset = create_asset(
+        client,
+        name="Deposit",
+        asset_class="deposit_account",
+        bucket_id=reserve["id"],
+    )
+    groceries = create_category(client, "Spesa", "expense")
+    content = f"{CSV_HEADERS}\n01/03/2026;Spesa Coop;-42,50;Spesa\n".encode()
+
+    response = commit_import(
+        client,
+        content,
+        asset_id=asset["id"],
+        selected_indexes=[0],
+        row_categories=[{"index": 0, "category_id": groceries["id"]}],
+    )
+
+    assert response.status_code == 422
+
+
 def test_commit_ids_can_be_undone_with_bulk_delete(client: TestClient) -> None:
     asset = create_asset(client, name="Checking", asset_class="current_account")
     groceries = create_category(client, "Spesa", "expense")

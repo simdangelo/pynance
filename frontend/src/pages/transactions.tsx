@@ -228,7 +228,7 @@ export default function Transactions() {
                 {categoryId === "all" ? "All categories" : categoryName(categoryId)}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent className="min-w-[240px]">
+            <SelectContent>
               <SelectItem value="all">All categories</SelectItem>
               {expenseCategories.length > 0 && (
                 <>

@@ -8,8 +8,10 @@ import type { Asset, Transfer } from "@/types/api"
 import { Money } from "@/components/money"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { EmptyState } from "@/components/empty-state"
+import { RowActions } from "@/components/row-actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -157,25 +159,22 @@ export default function Transfers({
                           <Money value={transfer.amount} className="font-medium" />
                         </TableCell>
                         <TableCell className="w-[1%] text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground"
-                              aria-label="Edit transfer"
-                              onClick={() => onEditTransfer(transfer)}
+                          <div className="flex justify-end">
+                            <RowActions
+                              label={`Actions for ${transfer.description}`}
                             >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground"
-                              aria-label="Delete transfer"
-                              onClick={() => setDeleteTarget(transfer)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              <DropdownMenuItem
+                                onClick={() => onEditTransfer(transfer)}
+                              >
+                                <Pencil /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => setDeleteTarget(transfer)}
+                              >
+                                <Trash2 /> Delete
+                              </DropdownMenuItem>
+                            </RowActions>
                           </div>
                         </TableCell>
                       </TableRow>

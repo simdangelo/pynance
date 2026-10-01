@@ -1,4 +1,4 @@
-import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Trash2 } from "lucide-react"
 
 import type { Allocation, Asset, Bucket, LiquidityCategory } from "@/types/api"
 import {
@@ -8,6 +8,7 @@ import {
   LIQUIDITY_LABEL,
 } from "@/lib/asset-meta"
 import { Money } from "@/components/money"
+import { RowActions } from "@/components/row-actions"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -19,11 +20,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
 interface AccountsListProps {
@@ -37,9 +35,6 @@ interface AccountsListProps {
   onEditAsset: (asset: Asset) => void
   onDeleteAsset: (asset: Asset) => void
 }
-
-const menuTriggerClass =
-  "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
 
 export function AccountsList({
   assets,
@@ -109,29 +104,21 @@ export function AccountsList({
                     value={(bucketTotals.get(bucket.id) ?? 0).toFixed(2)}
                     className="text-sm font-medium"
                   />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      aria-label={`Actions for ${bucket.name}`}
-                      className={menuTriggerClass}
+                  <RowActions label={`Actions for ${bucket.name}`}>
+                    <DropdownMenuItem onClick={() => onAddAsset(bucket.id)}>
+                      <Plus /> Add asset
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onEditBucket(bucket)}>
+                      <Pencil /> Edit bucket
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => onDeleteBucket(bucket)}
                     >
-                      <MoreHorizontal className="size-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => onAddAsset(bucket.id)}>
-                        <Plus /> Add asset
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEditBucket(bucket)}>
-                        <Pencil /> Edit bucket
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => onDeleteBucket(bucket)}
-                      >
-                        <Trash2 /> Delete bucket
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      <Trash2 /> Delete bucket
+                    </DropdownMenuItem>
+                  </RowActions>
                 </div>
               </div>
 
@@ -154,25 +141,17 @@ export function AccountsList({
                       </div>
                       <div className="flex items-center gap-2">
                         <Money value={asset.balance} className="text-sm" />
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            aria-label={`Actions for ${asset.name}`}
-                            className={menuTriggerClass}
+                        <RowActions label={`Actions for ${asset.name}`}>
+                          <DropdownMenuItem onClick={() => onEditAsset(asset)}>
+                            <Pencil /> Edit asset
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => onDeleteAsset(asset)}
                           >
-                            <MoreHorizontal className="size-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => onEditAsset(asset)}>
-                              <Pencil /> Edit asset
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => onDeleteAsset(asset)}
-                            >
-                              <Trash2 /> Delete asset
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            <Trash2 /> Delete asset
+                          </DropdownMenuItem>
+                        </RowActions>
                       </div>
                     </div>
                   ))

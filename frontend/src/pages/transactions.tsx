@@ -11,9 +11,11 @@ import { PageHeader } from "@/components/page-header"
 import { TransactionDialog } from "@/components/transaction-dialog"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { EmptyState } from "@/components/empty-state"
+import { RowActions } from "@/components/row-actions"
 import { Stat } from "@/components/stat"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -333,28 +335,23 @@ export default function Transactions() {
                           />
                         </TableCell>
                         <TableCell className="w-[1%] text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground"
-                              aria-label="Edit transaction"
-                              onClick={() => {
-                                setEditing(t)
-                                setDialogOpen(true)
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground"
-                              aria-label="Delete transaction"
-                              onClick={() => setDeleteTarget(t)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          <div className="flex justify-end">
+                            <RowActions label={`Actions for ${t.description}`}>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditing(t)
+                                  setDialogOpen(true)
+                                }}
+                              >
+                                <Pencil /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => setDeleteTarget(t)}
+                              >
+                                <Trash2 /> Delete
+                              </DropdownMenuItem>
+                            </RowActions>
                           </div>
                         </TableCell>
                       </TableRow>

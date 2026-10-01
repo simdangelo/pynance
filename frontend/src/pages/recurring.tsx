@@ -12,11 +12,13 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { DueNowCard } from "@/components/due-now-card"
 import { EmptyState } from "@/components/empty-state"
 import { PageHeader } from "@/components/page-header"
+import { RowActions } from "@/components/row-actions"
 import { Stat } from "@/components/stat"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -153,8 +155,8 @@ export default function Recurring() {
                   <TableHead>Frequency</TableHead>
                   <TableHead>Next occurrence</TableHead>
                   <TableHead className="w-[1%] text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[1%]"></TableHead>
+                  <TableHead className="w-[1%]">Status</TableHead>
+                  <TableHead className="w-[44px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -198,32 +200,27 @@ export default function Recurring() {
                           )}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="w-[1%]">
                         <StatusBadge template={template} />
                       </TableCell>
-                      <TableCell className="w-[1%] text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground"
-                            aria-label="Edit template"
-                            onClick={() => {
-                              setEditing(template)
-                              setDialogOpen(true)
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground"
-                            aria-label="Delete template"
-                            onClick={() => setDeleteTarget(template)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                      <TableCell className="w-[44px] text-right">
+                        <div className="flex justify-end">
+                          <RowActions label={`Actions for ${template.description}`}>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditing(template)
+                                setDialogOpen(true)
+                              }}
+                            >
+                              <Pencil /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => setDeleteTarget(template)}
+                            >
+                              <Trash2 /> Delete
+                            </DropdownMenuItem>
+                          </RowActions>
                         </div>
                       </TableCell>
                     </TableRow>

@@ -9,8 +9,10 @@ import { CategoryDialog } from "@/components/category-dialog"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { PageHeader } from "@/components/page-header"
+import { RowActions } from "@/components/row-actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -103,25 +105,18 @@ export default function Categories() {
                   <TableRow key={category.id}>
                     <TableCell className="font-medium">{category.name}</TableCell>
                     <TableCell className="w-[1%] text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-muted-foreground"
-                          aria-label={`Edit ${category.name}`}
-                          onClick={() => openEdit(category)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-muted-foreground"
-                          aria-label={`Delete ${category.name}`}
-                          onClick={() => setDeleteTarget(category)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="flex justify-end">
+                        <RowActions label={`Actions for ${category.name}`}>
+                          <DropdownMenuItem onClick={() => openEdit(category)}>
+                            <Pencil /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => setDeleteTarget(category)}
+                          >
+                            <Trash2 /> Delete
+                          </DropdownMenuItem>
+                        </RowActions>
                       </div>
                     </TableCell>
                   </TableRow>

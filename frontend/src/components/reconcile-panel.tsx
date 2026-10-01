@@ -10,8 +10,10 @@ import { todayLocalISO } from "@/lib/utils"
 import { Money } from "@/components/money"
 import { DateField } from "@/components/date-field"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { RowActions } from "@/components/row-actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -331,14 +333,14 @@ export function ReconcilePanel() {
                         Number(adjustment.amount) >= 0 ? "text-moss" : "text-clay"
                       }
                     />
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Delete adjustment"
-                      onClick={() => setDeleteTarget(adjustment)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <RowActions label="Actions for this adjustment">
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setDeleteTarget(adjustment)}
+                      >
+                        <Trash2 /> Delete
+                      </DropdownMenuItem>
+                    </RowActions>
                   </span>
                 </div>
               ))}

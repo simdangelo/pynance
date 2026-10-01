@@ -22,8 +22,85 @@ def test_request_link_code_returns_code(anon_client: TestClient) -> None:
     login(anon_client, "alice@example.com")
     response = anon_client.post("/api/telegram/link-code")
     assert response.status_code == 201
-    code = response.json()["code"]
-    assert isinstance(code, str) and len(code) > 5
+    body = response.json()
+    assert isinstance(body["code"], str) and len(body["code"]) > 5
+    assert body["expires_in_minutes"] == 10
+
+
+def test_bot_info_requires_auth(anon_client: TestClient) -> None:
+    assert anon_client.get("/api/telegram/bot").status_code == 401
+
+
+def test_bot_info_returns_telegram_username(
+    anon_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(telegram_link_service, "get_bot_username", lambda: "pynance_bot")
+    create_user(anon_client, "alice@example.com")
+    login(anon_client, "alice@example.com")
+
+    response = anon_client.get("/api/telegram/bot")
+
+    assert response.status_code == 200
+    assert response.json() == {"bot_username": "pynance_bot"}
+
+
+def test_generating_a_new_code_invalidates_the_previous(anon_client: TestClient) -> None:
+    create_user(anon_client, "alice@example.com")
+    login(anon_client, "alice@example.com")
+    first = anon_client.post("/api/telegram/link-code").json()["code"]
+    second = anon_client.post("/api/telegram/link-code").json()["code"]
+
+    with SessionLocal() as session:
+        try:
+            telegram_link_service.link_chat(session, first, "123456789")
+            pytest.fail("expected InvalidLinkCodeError")
+        except InvalidLinkCodeError:
+            pass
+        link = telegram_link_service.link_chat(session, second, "123456789")
+        assert link.chat_id == "123456789"
+
+
+def test_revoke_link_codes_invalidates_pending_codes(anon_client: TestClient) -> None:
+    create_user(anon_client, "alice@example.com")
+    login(anon_client, "alice@example.com")
+    code = anon_client.post("/api/telegram/link-code").json()["code"]
+
+    response = anon_client.delete("/api/telegram/link-code")
+
+    assert response.status_code == 204
+    with SessionLocal() as session:
+        try:
+            telegram_link_service.link_chat(session, code, "123456789")
+            pytest.fail("expected InvalidLinkCodeError")
+        except InvalidLinkCodeError:
+            pass
+
+
+def test_revoke_link_codes_keeps_a_linked_chat(anon_client: TestClient) -> None:
+    create_user(anon_client, "alice@example.com")
+    login(anon_client, "alice@example.com")
+    code = anon_client.post("/api/telegram/link-code").json()["code"]
+    with SessionLocal() as session:
+        telegram_link_service.link_chat(session, code, "123456789")
+
+    assert anon_client.delete("/api/telegram/link-code").status_code == 204
+
+    with SessionLocal() as session:
+        assert telegram_link_service.get_user_by_chat(session, "123456789") is not None
+
+
+def test_revoke_link_codes_only_affects_the_own_user(anon_client: TestClient) -> None:
+    create_user(anon_client, "alice@example.com")
+    login(anon_client, "alice@example.com")
+    alice_code = anon_client.post("/api/telegram/link-code").json()["code"]
+
+    create_user(anon_client, "bob@example.com")
+    login(anon_client, "bob@example.com")
+    anon_client.delete("/api/telegram/link-code")
+
+    with SessionLocal() as session:
+        link = telegram_link_service.link_chat(session, alice_code, "123456789")
+        assert link.chat_id == "123456789"
 
 
 def test_link_chat_consumes_code_and_links(anon_client: TestClient) -> None:

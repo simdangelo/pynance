@@ -1,9 +1,13 @@
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
-from sqlalchemy import select
+import httpx
+from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
+from pynance.config import settings
 from pynance.models.telegram_link import LinkCode, TelegramLink
 from pynance.services.exceptions import (
     ChatAlreadyLinkedError,
@@ -14,9 +18,38 @@ from pynance.services.exceptions import (
 
 LINK_CODE_TTL_MINUTES = 10
 
+_bot_username_cache: str | None = None
+
+
+def get_bot_username() -> str | None:
+    """Ask Telegram who the configured bot is (cached). None if unknown."""
+    global _bot_username_cache
+    if _bot_username_cache is not None:
+        return _bot_username_cache
+    token = settings.telegram_bot_token.get_secret_value()
+    if not token:
+        return None
+    try:
+        response = httpx.get(f"https://api.telegram.org/bot{token}/getMe", timeout=3.0)
+        response.raise_for_status()
+        payload = response.json()
+    except httpx.HTTPError:
+        return None
+    result = payload.get("result")
+    if isinstance(result, dict):
+        username = result.get("username")
+        if isinstance(username, str) and username:
+            _bot_username_cache = username
+            return username
+    return None
+
 
 def create_link_code(db: Session, user_id: int) -> LinkCode:
-    """Generate a short-lived, single-use code the user sends to the bot."""
+    """Generate a short-lived, single-use code the user sends to the bot.
+
+    Any previous unused code is invalidated: at most one pending code exists.
+    """
+    db.execute(delete(LinkCode).where(LinkCode.user_id == user_id, LinkCode.used.is_(False)))
     code = secrets.token_urlsafe(8)
     link_code = LinkCode(
         code=code,
@@ -28,6 +61,16 @@ def create_link_code(db: Session, user_id: int) -> LinkCode:
     db.commit()
     db.refresh(link_code)
     return link_code
+
+
+def revoke_link_codes(db: Session, user_id: int) -> int:
+    """Invalidate the user's still-unused codes. A linked chat stays linked."""
+    result = cast(
+        "CursorResult[Any]",
+        db.execute(delete(LinkCode).where(LinkCode.user_id == user_id, LinkCode.used.is_(False))),
+    )
+    db.commit()
+    return int(result.rowcount)
 
 
 def link_chat(db: Session, code: str, chat_id: str) -> TelegramLink:

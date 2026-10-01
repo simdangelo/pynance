@@ -7,7 +7,7 @@ import { Landmark, Plus } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Asset, Bucket, LiquidityCategory, Transfer } from "@/types/api"
 import { AllocationOverview } from "@/components/allocation-overview"
-import { AllocationTree } from "@/components/allocation-tree"
+import { AccountsList } from "@/components/accounts-list"
 import { AssetDialog } from "@/components/asset-dialog"
 import { BucketDialog } from "@/components/bucket-dialog"
 import { BucketDeleteDialog } from "@/components/bucket-delete-dialog"
@@ -206,9 +206,14 @@ function AccountsPanel({
           title="No assets yet"
           subtitle="Add a money pool (checking, savings, ...), pick what it is and which bucket it belongs to."
           action={
-            <Button size="sm" onClick={() => onAddAsset()}>
-              <Plus className="mr-1 h-4 w-4" /> Add asset
-            </Button>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button size="sm" onClick={() => onAddAsset()}>
+                <Plus className="mr-1 h-4 w-4" /> Add asset
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => onAddBucket()}>
+                <Plus className="mr-1 h-4 w-4" /> Add bucket
+              </Button>
+            </div>
           }
         />
       ) : (
@@ -218,12 +223,12 @@ function AccountsPanel({
             buckets={buckets ?? []}
             allocation={allocation}
           />
-          <AllocationTree
+          <AccountsList
             assets={assets}
             buckets={buckets ?? []}
             allocation={allocation}
             onAddBucket={onAddBucket}
-            onAddAsset={(bucket) => onAddAsset(bucket.id)}
+            onAddAsset={onAddAsset}
             onEditBucket={onEditBucket}
             onDeleteBucket={(bucket) => setDeleteBucketTarget(bucket)}
             onEditAsset={onEditAsset}

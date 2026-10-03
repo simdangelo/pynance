@@ -1,6 +1,5 @@
 import type {
   Allocation,
-  AppConfig,
   Asset,
   AssetInput,
   BalanceAdjustment,
@@ -9,7 +8,6 @@ import type {
   BucketInput,
   Category,
   Comparison,
-  DemoDataResult,
   ImportCommitResult,
   ImportMapping,
   ImportPreview,
@@ -108,10 +106,6 @@ function importFormData(
 }
 
 export const api = {
-  config: () => request<AppConfig>("/api/config"),
-  demoData: {
-    generate: () => request<DemoDataResult>("/api/demo-data", { method: "POST" }),
-  },
   auth: {
     register: (data: { email: string; password: string }) =>
       request<User>("/api/auth/register", {

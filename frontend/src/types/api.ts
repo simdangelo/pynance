@@ -230,16 +230,6 @@ export interface BotInfo {
   bot_username: string | null
 }
 
-export interface AppConfig {
-  demo_data_enabled: boolean
-}
-
-export interface DemoDataResult {
-  transactions_created: number
-  transfers_created: number
-  adjustments_created: number
-}
-
 export interface BalanceAdjustment {
   id: number
   asset_id: number

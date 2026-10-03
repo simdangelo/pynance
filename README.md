@@ -95,14 +95,14 @@ The script creates a single demo account you can log in with:
 | **Email** | `demo@example.com` |
 | **Password** | `demo1234` |
 
-It generates a deterministic dataset (same data on every run): salary and
-rent that grow over the years, groceries, bills, subscriptions, occasional
-shopping and travel, a monthly savings transfer, and a few recurring
-templates.
+It generates a deterministic dataset (same data on every run) with ups and
+downs over the years: growing salary and rent, groceries, bills,
+subscriptions, occasional events, savings and ETF contributions, and yearly
+interest/dividend adjustments.
 
-> **Warning:** the script **deletes all existing data** in the database it
-> connects to before inserting the demo data. It is meant for local use
-> only — never run it against a production database.
+> **Warning:** the script **deletes all data in the whole database** (every
+> account) before creating the demo one. It is meant for local use only —
+> never run it against a production database.
 
 ## Telegram bot
 

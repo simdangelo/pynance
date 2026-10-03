@@ -1,21 +1,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { FileUp, Info, Loader2, Undo2, Upload } from "lucide-react"
+import { ChevronLeft, ChevronRight, FileUp, Info, ListPlus, Loader2, Undo2, Upload } from "lucide-react"
 
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import type {
+  Category,
   ImportCommitResult,
   ImportMapping,
   ImportPreview,
   ImportRow,
+  TransactionType,
 } from "@/types/api"
 import { PageHeader } from "@/components/page-header"
 import { Money } from "@/components/money"
 import { TypeBadge } from "@/components/type-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -87,6 +97,13 @@ const DELIMITERS = [
   { value: "|", label: "Pipe |" },
 ]
 
+interface BulkPlan {
+  rows: { index: number; categoryId: number }[]
+  gaps: { index: number; key: string; name: string }[]
+  toCreate: { name: string; direction: TransactionType }[]
+  conflicts: number
+}
+
 function ParsingIndicator({ active }: { active: boolean }) {
   return (
     <span
@@ -129,6 +146,10 @@ export default function ImportData() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [rowCategoryIds, setRowCategoryIds] = useState<Record<number, number>>({})
   const [result, setResult] = useState<ImportCommitResult | null>(null)
+  const [confirmPlan, setConfirmPlan] = useState<BulkPlan | null>(null)
+  const [creatingCategories, setCreatingCategories] = useState(false)
+  const [pageSize, setPageSize] = useState<number | "all">(20)
+  const [page, setPage] = useState(1)
 
   const { data: assets } = useQuery({ queryKey: ["assets"], queryFn: api.assets.list })
   const { data: categories } = useQuery({
@@ -222,7 +243,7 @@ export default function ImportData() {
   const exactNameCategory = useCallback(
     (value: string) =>
       (categories ?? []).find(
-        (category) => category.name.toLowerCase() === value.toLowerCase(),
+        (category) => category.name.trim().toLowerCase() === value.trim().toLowerCase(),
       ),
     [categories],
   )
@@ -247,9 +268,22 @@ export default function ImportData() {
     [rowCategoryIds, defaultCategoryId],
   )
 
+  // A row whose category isn't in the database yet can still be selected:
+  // the import will offer to create it before committing.
+  const needsCategoryCreation = useCallback(
+    (row: ImportRow): boolean => {
+      if (rowCategoryIds[row.index] !== undefined) return false
+      const value = fileValueOf(row)
+      return Boolean(value && row.direction && !exactNameCategory(value))
+    },
+    [exactNameCategory, fileValueOf, rowCategoryIds],
+  )
+
   const isSelectable = useCallback(
-    (row: ImportRow) => row.status !== "invalid" && effectiveCategoryId(row) !== undefined,
-    [effectiveCategoryId],
+    (row: ImportRow) =>
+      row.status !== "invalid" &&
+      (effectiveCategoryId(row) !== undefined || needsCategoryCreation(row)),
+    [effectiveCategoryId, needsCategoryCreation],
   )
 
   const selectableIndexes = useMemo(
@@ -265,11 +299,20 @@ export default function ImportData() {
     [selected, selectableIndexes],
   )
 
-  const rowsByIndex = useMemo(() => {
-    const map = new Map<number, ImportRow>()
-    for (const row of preview?.rows ?? []) map.set(row.index, row)
-    return map
+  useEffect(() => {
+    setPage(1)
   }, [preview])
+
+  const previewRows = preview?.rows ?? []
+  const perPage = pageSize === "all" ? Math.max(1, previewRows.length) : pageSize
+  const pageCount = Math.max(1, Math.ceil(previewRows.length / perPage))
+  const currentPage = Math.min(page, pageCount)
+  const visibleRows =
+    pageSize === "all"
+      ? previewRows
+      : previewRows.slice((currentPage - 1) * perPage, currentPage * perPage)
+  const rangeStart = previewRows.length === 0 ? 0 : (currentPage - 1) * perPage + 1
+  const rangeEnd = Math.min(currentPage * perPage, previewRows.length)
 
   const unresolvedCount = useMemo(
     () =>
@@ -279,18 +322,68 @@ export default function ImportData() {
     [preview, isSelectable],
   )
 
+  const buildPlan = useCallback(
+    (indexes: Set<number> | null): BulkPlan => {
+      const existingByName = new Map<string, Category>(
+        (categories ?? []).map((category) => [category.name.trim().toLowerCase(), category]),
+      )
+      const toCreate = new Map<string, { name: string; direction: TransactionType }>()
+      const rows: BulkPlan["rows"] = []
+      const gaps: BulkPlan["gaps"] = []
+      let conflicts = 0
+
+      for (const row of preview?.rows ?? []) {
+        if (row.status === "invalid") continue
+        if (indexes && !indexes.has(row.index)) continue
+        const manualId = rowCategoryIds[row.index]
+        if (manualId !== undefined) {
+          rows.push({ index: row.index, categoryId: manualId })
+          continue
+        }
+        const value = fileValueOf(row)
+        if (!value) continue
+        const key = value.toLowerCase()
+        const existing = existingByName.get(key)
+        if (existing) {
+          if (!row.direction || existing.transaction_type === row.direction) {
+            rows.push({ index: row.index, categoryId: existing.id })
+          } else {
+            conflicts += 1
+          }
+          continue
+        }
+        if (!row.direction) continue
+        if (!toCreate.has(key)) {
+          toCreate.set(key, { name: value, direction: row.direction })
+        }
+        gaps.push({ index: row.index, key, name: value })
+      }
+
+      return { rows, gaps, toCreate: [...toCreate.values()], conflicts }
+    },
+    [categories, fileValueOf, preview, rowCategoryIds],
+  )
+
+  const bulkPlan = useMemo(() => buildPlan(null), [buildPlan])
+  const bulkTotal = bulkPlan.rows.length + bulkPlan.gaps.length
+  const selectedPlan = useMemo(
+    () => buildPlan(new Set(effectiveSelected)),
+    [buildPlan, effectiveSelected],
+  )
+  const selectedTotal = selectedPlan.rows.length + selectedPlan.gaps.length
+
   const commitMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (rows: { index: number; categoryId: number }[]) =>
       api.importData.commit(file as File, {
         mapping,
         dateFormat,
         delimiter: delimiter === "__auto__" ? null : delimiter,
         sheet,
         assetId: Number(assetId),
-        selectedIndexes: effectiveSelected,
-        rowCategories: effectiveSelected.map((index) => ({
-          index,
-          category_id: effectiveCategoryId(rowsByIndex.get(index) as ImportRow) as number,
+        selectedIndexes: rows.map((row) => row.index),
+        rowCategories: rows.map((row) => ({
+          index: row.index,
+          category_id: row.categoryId,
         })),
       }),
     onSuccess: (data) => {
@@ -312,6 +405,44 @@ export default function ImportData() {
     },
     onError: (error: Error) => toast.error(error.message || "Undo failed"),
   })
+
+  const runPlan = async (plan: BulkPlan) => {
+    setConfirmPlan(null)
+    const createdIds = new Map<string, number>()
+    if (plan.toCreate.length > 0) {
+      setCreatingCategories(true)
+      const failed: string[] = []
+      for (const item of plan.toCreate) {
+        try {
+          const created = await api.categories.create({
+            name: item.name,
+            transaction_type: item.direction,
+          })
+          createdIds.set(item.name.toLowerCase(), created.id)
+        } catch {
+          failed.push(item.name)
+        }
+      }
+      setCreatingCategories(false)
+      queryClient.invalidateQueries({ queryKey: ["categories"] })
+      if (failed.length > 0) {
+        toast.error(`Could not create: ${failed.join(", ")}`)
+      }
+    }
+
+    const rows = [...plan.rows]
+    for (const gap of plan.gaps) {
+      const id = createdIds.get(gap.key)
+      if (id !== undefined) rows.push({ index: gap.index, categoryId: id })
+    }
+    rows.sort((a, b) => a.index - b.index)
+
+    if (rows.length === 0) {
+      toast.error("Nothing to import — no row has a resolvable category")
+      return
+    }
+    commitMutation.mutate(rows)
+  }
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] ?? null
@@ -355,7 +486,8 @@ export default function ImportData() {
 
   const summary = preview?.summary
   const showWizard = preview !== null && file !== null && mapping !== null && !result
-  const busy = previewMutation.isPending || commitMutation.isPending
+  const busy =
+    previewMutation.isPending || commitMutation.isPending || creatingCategories
 
   return (
     <div className="space-y-5">
@@ -636,7 +768,7 @@ export default function ImportData() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {preview.rows.map((row) => {
+                  {visibleRows.map((row) => {
                     const selectable = isSelectable(row)
                     const fileValue = fileValueOf(row)
                     const exact = fileValue ? exactNameCategory(fileValue) : undefined
@@ -753,6 +885,8 @@ export default function ImportData() {
                             <span className="text-clay">Choose a category</span>
                           ) : row.status === "duplicate" ? (
                             <span className="text-muted-foreground">Duplicate</span>
+                          ) : needsCategoryCreation(row) ? (
+                            <span className="text-muted-foreground">New category</span>
                           ) : null}
                         </TableCell>
                       </TableRow>
@@ -761,25 +895,182 @@ export default function ImportData() {
                 </TableBody>
               </Table>
 
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Rows per page</span>
+                  <Select
+                    value={pageSize === "all" ? "all" : String(pageSize)}
+                    disabled={busy}
+                    onValueChange={(value) => {
+                      if (!value) return
+                      setPageSize(value === "all" ? "all" : Number(value))
+                      setPage(1)
+                    }}
+                  >
+                    <SelectTrigger size="sm" className="w-[104px]">
+                      <SelectValue>
+                        {pageSize === "all" ? "Show all" : pageSize}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="all">Show all</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs">
+                    {rangeStart}–{rangeEnd} of {previewRows.length}
+                  </span>
+                </div>
+
+                {pageSize !== "all" && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy || currentPage <= 1}
+                      onClick={() =>
+                        setPage((previous) => Math.max(1, previous - 1))
+                      }
+                    >
+                      <ChevronLeft className="h-4 w-4" /> Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      Page {currentPage} of {pageCount}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy || currentPage >= pageCount}
+                      onClick={() =>
+                        setPage((previous) => Math.min(pageCount, previous + 1))
+                      }
+                    >
+                      Next <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               <div className="flex flex-wrap items-center justify-end gap-3">
                 <span className="text-sm text-muted-foreground">
                   {effectiveSelected.length} of {summary?.ok ?? 0} ready rows selected
                   {unresolvedCount > 0 &&
-                    ` · ${unresolvedCount} will be skipped (no category)`}
+                    ` · ${unresolvedCount} will be skipped (no usable category)`}
                 </span>
                 <Button
                   type="button"
-                  onClick={() => commitMutation.mutate()}
-                  disabled={busy || !assetId || effectiveSelected.length === 0}
+                  variant="outline"
+                  disabled={busy || !assetId || selectedTotal === 0}
+                  onClick={() => {
+                    if (selectedPlan.toCreate.length > 0) setConfirmPlan(selectedPlan)
+                    else void runPlan(selectedPlan)
+                  }}
                 >
                   <FileUp className="mr-1 h-4 w-4" />
-                  {commitMutation.isPending
-                    ? "Importing…"
-                    : `Import ${effectiveSelected.length} transactions`}
+                  Import {selectedTotal} selected
+                </Button>
+                <Button
+                  type="button"
+                  disabled={busy || !assetId || bulkTotal === 0}
+                  onClick={() => {
+                    if (bulkPlan.toCreate.length > 0) setConfirmPlan(bulkPlan)
+                    else void runPlan(bulkPlan)
+                  }}
+                >
+                  <ListPlus className="mr-1 h-4 w-4" />
+                  {creatingCategories
+                    ? "Creating categories…"
+                    : commitMutation.isPending
+                      ? "Importing…"
+                      : `Import all ${bulkTotal}`}
                 </Button>
               </div>
             </CardContent>
           </Card>
+
+          <Dialog
+            open={confirmPlan !== null}
+            onOpenChange={(open) => {
+              if (!open) setConfirmPlan(null)
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              {confirmPlan && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>
+                      Create {confirmPlan.toCreate.length}{" "}
+                      {confirmPlan.toCreate.length === 1 ? "category" : "categories"}?
+                    </DialogTitle>
+                    <DialogDescription>
+                      They are used in the file but don’t exist yet. They will be
+                      created first, then{" "}
+                      {confirmPlan.rows.length + confirmPlan.gaps.length}{" "}
+                      transactions will be imported.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4">
+                    {(["expense", "income"] as const).map((direction) => {
+                      const items = confirmPlan.toCreate.filter(
+                        (item) => item.direction === direction,
+                      )
+                      if (items.length === 0) return null
+                      return (
+                        <div key={direction} className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <TypeBadge type={direction} />
+                            <span className="text-xs text-muted-foreground">
+                              {items.length} new
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {items.map((item) => (
+                              <span
+                                key={item.name}
+                                className="rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs"
+                              >
+                                {item.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {confirmPlan.conflicts > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {confirmPlan.conflicts} row
+                      {confirmPlan.conflicts === 1 ? "" : "s"} use a name that
+                      already exists with the opposite type and will be skipped —
+                      fix them in the table first.
+                    </p>
+                  )}
+
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setConfirmPlan(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => void runPlan(confirmPlan)}
+                    >
+                      Create and import
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
         </>
       )}
 

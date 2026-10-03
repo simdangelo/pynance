@@ -82,7 +82,10 @@ def anon_client(db_session: Session) -> Generator[TestClient]:
 @pytest.fixture
 def liquid_asset(client: TestClient) -> int:
     asset = create_asset(client, name="Liquid", asset_class="current_account")
-    return cast("int", asset["id"])
+    asset_id = cast("int", asset["id"])
+    response = client.patch("/api/auth/me", json={"default_asset_id": asset_id})
+    assert response.status_code == 200, response.text
+    return asset_id
 
 
 def create_user(client: TestClient, email: str = "user@example.com") -> dict[str, Any]:

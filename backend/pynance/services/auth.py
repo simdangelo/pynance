@@ -5,11 +5,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from pynance.config import settings
+from pynance.models.asset import Asset
 from pynance.models.session import Session as UserSession
 from pynance.models.user import User
-from pynance.schemas.user import UserCreate, UserLogin
+from pynance.schemas.user import UserCreate, UserLogin, UserUpdate
+from pynance.services.asset import ensure_liquid_asset
 from pynance.services.bucket import seed_default_buckets
 from pynance.services.exceptions import (
+    AssetNotFoundError,
     DuplicateEmailError,
     InvalidCredentialsError,
 )
@@ -29,6 +32,28 @@ def register_user(db: Session, data: UserCreate) -> User:
     db.refresh(new_user)
     seed_default_buckets(db, new_user.id)
     return new_user
+
+
+def update_user_settings(db: Session, user_id: int, data: UserUpdate) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise InvalidCredentialsError("User doesn't exist")
+
+    fields = data.model_dump(exclude_unset=True)
+    if fields.get("default_asset_id") is not None:
+        asset = db.execute(
+            select(Asset).where(Asset.id == fields["default_asset_id"], Asset.user_id == user_id)
+        ).scalar_one_or_none()
+        if asset is None:
+            raise AssetNotFoundError(f"Asset with id {fields['default_asset_id']} doesn't exist")
+        ensure_liquid_asset(asset)
+
+    for field_to_update, value in fields.items():
+        setattr(user, field_to_update, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def login_user(db: Session, data: UserLogin) -> UserSession:

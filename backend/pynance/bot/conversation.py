@@ -188,10 +188,14 @@ async def confirm_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                     occurred_on=datetime.now(UTC).date(),
                 ),
             )
-    except CategoryNotFoundError, AssetNotFoundError:
+    except AssetNotFoundError:
         await query.edit_message_text(
-            "Qualcosa è andato storto (categoria o asset non trovato). Riprova."
+            "Nessun asset predefinito impostato. Apri l'app → Settings e scegli "
+            "l'asset predefinito, poi riprova."
         )
+        return -1
+    except CategoryNotFoundError:
+        await query.edit_message_text("Categoria non trovata. Riprova.")
         return -1
     await query.edit_message_text(f"✓ Spesa registrata: {amount}€ in '{description}'")
     _data(context).clear()
@@ -201,7 +205,7 @@ async def confirm_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 def _default_asset_id(session: Session, user_id: int) -> int:
     asset = asset_service.get_default_asset(session, user_id)
     if asset is None:
-        raise AssetNotFoundError("No default asset exists")
+        raise AssetNotFoundError("No default asset set")
     return asset.id
 
 

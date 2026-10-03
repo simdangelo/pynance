@@ -131,7 +131,9 @@ def generate_next(db: Session, user_id: int, recurring_template_id: int) -> Tran
 
     liquid_asset = asset_service.get_default_asset(db, user_id)
     if liquid_asset is None:
-        raise AssetNotFoundError("No default asset exists")
+        raise AssetNotFoundError(
+            "No default asset set: choose one in Settings before generating recurring transactions"
+        )
 
     new_transaction = Transaction(
         amount=template.amount,

@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 
 from fastapi.testclient import TestClient
 
-from tests.conftest import create_category, create_recurring_template
+from tests.conftest import create_asset, create_category, create_recurring_template
 
 
 def test_create_recurring_template(client: TestClient) -> None:
@@ -237,6 +237,24 @@ def test_generate_next_not_found_returns_404(client: TestClient) -> None:
     response = client.post("/api/recurring-template/9999/generate")
 
     assert response.status_code == 404
+
+
+def test_generate_next_without_a_default_asset_returns_404(client: TestClient) -> None:
+    create_asset(client, name="Checking", asset_class="current_account")
+    category = create_category(client, "groceries", "expense")
+    template = create_recurring_template(
+        client,
+        description="Rent",
+        amount="500.00",
+        category_id=category["id"],
+        frequency="monthly",
+        next_occurrence="2026-06-01",
+    )
+
+    response = client.post(f"/api/recurring-template/{template['id']}/generate")
+
+    assert response.status_code == 404
+    assert "default asset" in response.json()["detail"].lower()
 
 
 def test_generate_next_twice_produces_distinct_dates(client: TestClient, liquid_asset: int) -> None:

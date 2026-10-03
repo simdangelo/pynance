@@ -7,9 +7,11 @@ from pynance.api.dependencies import SESSION_COOKIE_NAME, CurrentUser
 from pynance.config import settings
 from pynance.database import get_db
 from pynance.models.user import User
-from pynance.schemas.user import UserCreate, UserLogin, UserResponse
+from pynance.schemas.user import UserCreate, UserLogin, UserResponse, UserUpdate
 from pynance.services import auth as auth_service
 from pynance.services.exceptions import (
+    AssetNotFoundError,
+    AssetNotLiquidError,
     DuplicateEmailError,
     InvalidCredentialsError,
 )
@@ -62,3 +64,17 @@ def logout(
 @router.get("/me", response_model=UserResponse)
 def me(current_user: CurrentUser) -> User:
     return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    update: UserUpdate,
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> User:
+    try:
+        return auth_service.update_user_settings(db, current_user.id, update)
+    except AssetNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except AssetNotLiquidError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)) from e

@@ -15,6 +15,7 @@ from pynance.schemas.recurring_template import (
 from pynance.schemas.transaction import TransactionResponse
 from pynance.services import recurring_template as recurring_template_service
 from pynance.services.exceptions import (
+    AssetNotFoundError,
     CategoryNotFoundError,
     NextOccurrenceNotDueError,
     PausedTemplateError,
@@ -113,3 +114,5 @@ def generate_next(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Next occurrence is not due yet"
         ) from e
+    except AssetNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e

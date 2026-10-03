@@ -12,7 +12,8 @@ from pynance.models.bucket import Bucket
 from pynance.models.category import Category
 from pynance.models.transaction import Transaction
 from pynance.models.transfer import Transfer
-from pynance.models.types import AssetClass, LiquidityCategory, TransactionType
+from pynance.models.types import LiquidityCategory, TransactionType
+from pynance.models.user import User
 from pynance.schemas.asset import AssetCreate, AssetUpdate
 from pynance.services.exceptions import (
     AssetInUseError,
@@ -92,28 +93,18 @@ def list_assets(db: Session, user_id: int) -> list[Asset]:
 
 
 def get_default_asset(db: Session, user_id: int) -> Asset | None:
-    """The asset a quick entry (bot, recurring, import) attaches to.
+    """The asset quick entries (bot, recurring) attach to: the user's choice.
 
-    First asset of the first LIQUID bucket, falling back to the first
-    current-account asset.
+    There is deliberately no automatic fallback: returns None when the user
+    hasn't chosen one yet, so callers can ask them to set it in Settings.
     """
-    asset = db.execute(
-        select(Asset)
-        .join(Bucket, Asset.bucket_id == Bucket.id)
-        .where(Asset.user_id == user_id, Bucket.liquidity_category == LiquidityCategory.LIQUID)
-        .options(selectinload(Asset.bucket))
-        .order_by(Bucket.sort_order, Asset.id)
-        .limit(1)
-    ).scalar_one_or_none()
-    if asset is not None:
-        return asset
-
+    user = db.get(User, user_id)
+    if user is None or user.default_asset_id is None:
+        return None
     return db.execute(
         select(Asset)
-        .where(Asset.user_id == user_id, Asset.asset_class == AssetClass.CURRENT_ACCOUNT)
+        .where(Asset.id == user.default_asset_id, Asset.user_id == user_id)
         .options(selectinload(Asset.bucket))
-        .order_by(Asset.id)
-        .limit(1)
     ).scalar_one_or_none()
 
 

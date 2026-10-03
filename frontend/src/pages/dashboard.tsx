@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react"
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Loader2, Sparkles } from "lucide-react"
+import { toast } from "sonner"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { api } from "@/lib/api"
 import { formatCompact, monthLabel } from "@/lib/chart"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { DashboardHero, type LiquidityEntry } from "@/components/dashboard-hero"
 import { PageHeader } from "@/components/page-header"
+import { Button } from "@/components/ui/button"
 import {
   TrendRangeSelector,
   rangeToDates,
@@ -31,7 +35,23 @@ function greeting(date = new Date()): string {
 }
 
 export default function Dashboard() {
+  const queryClient = useQueryClient()
   const [range, setRange] = useState<TrendRange>("ALL")
+  const [demoConfirmOpen, setDemoConfirmOpen] = useState(false)
+
+  const { data: appConfig } = useQuery({
+    queryKey: ["config"],
+    queryFn: api.config,
+  })
+
+  const demoMutation = useMutation({
+    mutationFn: api.demoData.generate,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries()
+      toast.success(`Generated ${result.transactions_created} transactions`)
+    },
+    onError: (error: Error) => toast.error(error.message || "Failed to generate demo data"),
+  })
 
   const {
     data: allocation,
@@ -88,7 +108,16 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title={greeting()} />
+      <PageHeader
+        title={greeting()}
+        action={
+          appConfig?.demo_data_enabled ? (
+            <Button variant="outline" onClick={() => setDemoConfirmOpen(true)}>
+              <Sparkles className="mr-1 h-4 w-4" /> Generate fake data
+            </Button>
+          ) : undefined
+        }
+      />
 
       <DashboardHero
         delta={delta}
@@ -180,6 +209,24 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={demoConfirmOpen}
+        onOpenChange={setDemoConfirmOpen}
+        title="Generate fake data?"
+        description="Your current transactions, transfers and adjustments will be replaced with about 10 years of fake data. Development-only tool."
+        confirmLabel="Generate"
+        onConfirm={() => demoMutation.mutate()}
+      />
+
+      {demoMutation.isPending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 shadow-lg">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <span className="text-sm font-medium">Generating fake data…</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     access_session_expire_days: int = 30
     allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
     secure_cookies: bool = False
+    enable_demo_data: bool = False
 
     @property
     def resolved_database_url(self) -> str:

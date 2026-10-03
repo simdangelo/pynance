@@ -13,6 +13,8 @@ from pynance.api.routers import (
     auth,
     bucket,
     category,
+    config,
+    demo_data,
     import_data,
     recurring_template,
     static_assets,
@@ -106,6 +108,8 @@ def health() -> dict[str, str]:
 
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(config.router, prefix="/api/config", tags=["config"])
+app.include_router(demo_data.router, prefix="/api/demo-data", tags=["demo-data"])
 app.include_router(import_data.router, prefix="/api/import", tags=["import"])
 app.include_router(category.router, prefix="/api/categories", tags=["categories"])
 app.include_router(transaction.router, prefix="/api/transactions", tags=["transactions"])

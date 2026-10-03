@@ -6,7 +6,7 @@ interface StatLabelProps {
 
 export function StatLabel({ children }: StatLabelProps) {
   return (
-    <span className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground/60 uppercase">
+    <span className="text-[13px] font-medium text-muted-foreground">
       {children}
     </span>
   )

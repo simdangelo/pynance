@@ -7,6 +7,7 @@ import {
   LIQUIDITY_COLOR,
   LIQUIDITY_LABEL,
 } from "@/lib/asset-meta"
+import { EmptyState } from "@/components/empty-state"
 import { Money } from "@/components/money"
 import { RowActions } from "@/components/row-actions"
 import { Button } from "@/components/ui/button"
@@ -115,7 +116,10 @@ export function AccountsList({
             </div>
 
             {group.buckets.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No buckets yet.</p>
+              <EmptyState
+                title="No buckets yet"
+                subtitle="Add a bucket to start grouping your accounts."
+              />
             ) : (
               group.buckets.map((bucket) => {
                 const items = assets.filter(
@@ -159,9 +163,10 @@ export function AccountsList({
 
                     <div className="p-1.5">
                       {items.length === 0 ? (
-                        <p className="px-2.5 py-2 text-sm text-muted-foreground">
-                          No assets in this bucket yet.
-                        </p>
+                        <EmptyState
+                          className="py-5"
+                          title="No assets in this bucket yet"
+                        />
                       ) : (
                         items.map((asset) => (
                           <div

@@ -634,7 +634,7 @@ export default function ImportData() {
                     <Label className="flex items-center gap-1.5">
                       <span>
                         {field.label}
-                        {field.required && <span className="ml-0.5 text-clay">*</span>}
+                        {field.required && <span className="ml-0.5 text-destructive">*</span>}
                       </span>
                       <InfoHint text={field.hint} />
                     </Label>
@@ -665,7 +665,7 @@ export default function ImportData() {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-clay">*</span> required
+                <span className="text-destructive">*</span> required
               </p>
             </CardContent>
           </Card>
@@ -727,7 +727,7 @@ export default function ImportData() {
                   {unresolvedCount > 0 && (
                     <>
                       <span>·</span>
-                      <span className="text-clay">{unresolvedCount} without category</span>
+                      <span className="text-destructive">{unresolvedCount} without category</span>
                     </>
                   )}
                 </div>
@@ -880,9 +880,9 @@ export default function ImportData() {
                         </TableCell>
                         <TableCell className="text-sm">
                           {row.status === "invalid" ? (
-                            <span className="text-clay">{row.reason}</span>
+                            <span className="text-destructive">{row.reason}</span>
                           ) : !selectable ? (
-                            <span className="text-clay">Choose a category</span>
+                            <span className="text-destructive">Choose a category</span>
                           ) : row.status === "duplicate" ? (
                             <span className="text-muted-foreground">Duplicate</span>
                           ) : needsCategoryCreation(row) ? (
@@ -929,13 +929,14 @@ export default function ImportData() {
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
+                      size="icon-sm"
+                      aria-label="Previous page"
                       disabled={busy || currentPage <= 1}
                       onClick={() =>
                         setPage((previous) => Math.max(1, previous - 1))
                       }
                     >
-                      <ChevronLeft className="h-4 w-4" /> Previous
+                      <ChevronLeft className="h-4 w-4" aria-hidden />
                     </Button>
                     <span className="text-sm text-muted-foreground">
                       Page {currentPage} of {pageCount}
@@ -943,13 +944,14 @@ export default function ImportData() {
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
+                      size="icon-sm"
+                      aria-label="Next page"
                       disabled={busy || currentPage >= pageCount}
                       onClick={() =>
                         setPage((previous) => Math.min(pageCount, previous + 1))
                       }
                     >
-                      Next <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-4 w-4" aria-hidden />
                     </Button>
                   </div>
                 )}

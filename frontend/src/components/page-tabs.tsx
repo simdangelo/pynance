@@ -9,7 +9,7 @@ export interface PageTab {
 
 export function PageTabs({ tabs }: { tabs: PageTab[] }) {
   return (
-    <div className="flex items-baseline gap-5">
+    <div className="flex items-center gap-5">
       {tabs.map((tab) => (
         <NavLink
           key={tab.to}
@@ -17,22 +17,14 @@ export function PageTabs({ tabs }: { tabs: PageTab[] }) {
           end
           className={({ isActive }) =>
             cn(
-              "relative cursor-pointer text-lg font-medium transition-colors",
-              isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              "-mb-px inline-flex h-9 cursor-pointer items-center border-b-2 px-0.5 text-[13px] font-medium transition-colors",
+              isActive
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
             )
           }
         >
-          {({ isActive }) => (
-            <>
-              {tab.label}
-              <span
-                className={cn(
-                  "absolute inset-x-0 -bottom-1.5 h-0.5 rounded-full bg-primary transition-opacity",
-                  isActive ? "opacity-100" : "opacity-0",
-                )}
-              />
-            </>
-          )}
+          {tab.label}
         </NavLink>
       ))}
     </div>

@@ -21,7 +21,7 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
         aria-label={collapsed ? "Account menu" : undefined}
         className="flex h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 text-left transition-colors hover:bg-muted data-[popup-open]:bg-muted"
       >
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-[6px] bg-foreground text-[11px] font-semibold text-background">
           {initial}
         </span>
         <span
@@ -41,10 +41,10 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner side="top" align="start" sideOffset={8} className="z-50">
-          <Menu.Popup className="min-w-[190px] rounded-xl border border-border bg-popover p-1 shadow-[0_12px_32px_rgb(36_31_31_/_0.10)] outline-none">
+          <Menu.Popup className="min-w-[190px] rounded-lg border border-border bg-popover p-1 shadow-[0_10px_30px_rgb(0_0_0_/_0.08)] outline-none">
             <Menu.Item
               onClick={() => void logout()}
-              className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium text-destructive select-none data-[highlighted]:bg-destructive-soft"
+              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium text-destructive outline-hidden select-none data-[highlighted]:bg-destructive-soft"
             >
               <LogOut className="size-4" />
               Sign out

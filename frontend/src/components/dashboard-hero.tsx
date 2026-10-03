@@ -12,7 +12,6 @@ import { DonutChart } from "@/components/donut-chart"
 import { Money } from "@/components/money"
 import { StatLabel } from "@/components/stat-label"
 import { Card, CardContent } from "@/components/ui/card"
-import type { TrendRange } from "@/components/trend-range-selector"
 
 export interface LiquidityEntry {
   category: LiquidityCategory
@@ -22,7 +21,7 @@ export interface LiquidityEntry {
 export interface NetWorthDelta {
   pct: number
   sinceLabel: string
-  range: TrendRange
+  range: string
 }
 
 interface DashboardHeroProps {
@@ -84,7 +83,8 @@ function DeltaPill({ delta }: { delta: NetWorthDelta }) {
         {Math.abs(delta.pct).toFixed(1)}%
       </span>
       <span className="text-muted-foreground">
-        since {delta.sinceLabel} ({delta.range})
+        since {delta.sinceLabel}
+        {delta.range ? ` (${delta.range})` : ""}
       </span>
     </div>
   )
@@ -100,7 +100,7 @@ function NetWorthValue({
   error: boolean
 }) {
   return (
-    <span className="block font-numeric text-4xl leading-none font-medium tracking-tight">
+    <span className="block font-numeric text-[32px] leading-none font-medium tracking-tight">
       {loading || error ? (
         <span className="text-faint-foreground">—</span>
       ) : (

@@ -63,13 +63,13 @@ function SidebarIconLink({
         cn(
           iconButtonClass,
           "relative",
-          isActive && "bg-primary-soft text-primary hover:bg-primary-soft hover:text-primary",
+          isActive && "bg-muted text-foreground hover:bg-muted hover:text-foreground",
         )
       }
     >
       <Icon className="size-[18px]" />
       {alert && (
-        <span className="absolute top-1 right-1 size-2 rounded-full bg-clay ring-2 ring-sidebar" />
+        <span className="absolute top-1 right-1 size-2 rounded-full bg-destructive ring-2 ring-sidebar" />
       )}
     </NavLink>
   )
@@ -111,7 +111,7 @@ export function Layout() {
         className={cn(
           "fixed top-0 bottom-0 left-0 z-40 hidden flex-col overflow-hidden border-r border-border bg-sidebar transition-[width,box-shadow] duration-200 ease-out md:flex",
           expanded ? "w-60" : "w-16",
-          collapsed && peeking && "shadow-[0_12px_32px_rgb(36_31_31_/_0.10)]",
+          collapsed && peeking && "shadow-[0_10px_30px_rgb(0_0_0_/_0.08)]",
         )}
       >
         {/* Header: fixed height and fixed logo slot in both states, so nothing moves. */}
@@ -172,10 +172,10 @@ export function Layout() {
       {drawerOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-foreground/30"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="absolute top-0 bottom-0 left-0 flex w-64 flex-col bg-sidebar shadow-lg">
+          <aside className="absolute top-0 bottom-0 left-0 flex w-64 flex-col bg-sidebar shadow-[0_10px_30px_rgb(0_0_0_/_0.08)]">
             <div className="flex h-14 items-center justify-between px-4">
               <Logo />
               <div className="flex items-center gap-0.5">
@@ -211,7 +211,7 @@ export function Layout() {
           collapsed ? "md:ml-16" : "md:ml-60",
         )}
       >
-        <div className="px-6 py-6 md:px-8">
+        <div className="mx-auto w-full max-w-[1440px] px-6 py-6 md:px-8">
           <Outlet />
         </div>
       </main>

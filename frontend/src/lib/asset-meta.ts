@@ -25,15 +25,15 @@ export const ASSET_CLASS_LABEL: Record<AssetClass, string> = {
 }
 
 export const ASSET_CLASS_COLOR: Record<AssetClass, string> = {
-  current_account: "var(--color-petrol)",
-  deposit_account: "var(--color-moss)",
-  money_market_etf: "var(--color-teal)",
-  government_bond: "var(--color-slate)",
-  corporate_bond: "var(--color-plum)",
-  bond_etf: "var(--color-ochre)",
-  equity_etf: "var(--color-clay)",
-  stock: "var(--color-rust)",
-  other: "var(--color-stone)",
+  current_account: "var(--color-chart-1)",
+  deposit_account: "var(--color-positive)",
+  money_market_etf: "var(--color-chart-2)",
+  government_bond: "var(--color-chart-6)",
+  corporate_bond: "var(--color-chart-3)",
+  bond_etf: "var(--color-chart-5)",
+  equity_etf: "var(--color-chart-4)",
+  stock: "var(--color-chart-8)",
+  other: "var(--color-muted-foreground)",
 }
 
 export const LIQUIDITY_CATEGORIES: LiquidityCategory[] = ["liquid", "reserve", "invested"]
@@ -45,7 +45,7 @@ export const LIQUIDITY_LABEL: Record<LiquidityCategory, string> = {
 }
 
 export const LIQUIDITY_COLOR: Record<LiquidityCategory, string> = {
-  liquid: "var(--color-petrol)",
-  reserve: "var(--color-moss)",
-  invested: "var(--color-ochre)",
+  liquid: "var(--color-chart-1)",
+  reserve: "var(--color-positive)",
+  invested: "var(--color-chart-5)",
 }

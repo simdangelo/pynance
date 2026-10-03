@@ -1,7 +1,6 @@
 import { useMemo } from "react"
 import { Navigate, Route, Routes, useSearchParams } from "react-router-dom"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { Filter } from "lucide-react"
 import {
   Bar,
   BarChart,
@@ -15,21 +14,17 @@ import {
 
 import { api } from "@/lib/api"
 import { formatCompact, monthLabel } from "@/lib/chart"
+import { periodRange, type Period } from "@/lib/period"
+import { useAllTimeTrend } from "@/lib/use-all-time-trend"
 import { cn } from "@/lib/utils"
 import type { TransactionType } from "@/types/api"
 import { DonutChart } from "@/components/donut-chart"
 import { Money } from "@/components/money"
 import { PageHeader } from "@/components/page-header"
 import { PageTabs } from "@/components/page-tabs"
+import { PeriodFilter } from "@/components/period-filter"
 import { Stat } from "@/components/stat"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   ChartContainer,
   ChartLegend,
@@ -38,8 +33,6 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-
-type Period = "ytd" | "all" | number
 
 const TABS = [
   { to: "/reports/cash-flow", label: "Cash Flow" },
@@ -63,22 +56,8 @@ const OTHER_COLOR = "var(--color-muted-foreground)"
 const CASH_FLOW_CONFIG = {
   income: { label: "Income", color: "var(--positive)" },
   expense: { label: "Expense", color: "var(--destructive)" },
-  net: { label: "Net", color: "var(--primary)" },
+  net: { label: "Net", color: "var(--foreground)" },
 } satisfies ChartConfig
-
-function todayISO(): string {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, "0")
-  const day = String(now.getDate()).padStart(2, "0")
-  return `${now.getFullYear()}-${month}-${day}`
-}
-
-function periodRange(period: Period): { start: string; end: string } {
-  const now = new Date()
-  if (period === "all") return { start: "2000-01-01", end: todayISO() }
-  if (period === "ytd") return { start: `${now.getFullYear()}-01-01`, end: todayISO() }
-  return { start: `${period}-01-01`, end: `${period}-12-31` }
-}
 
 function periodMonths(period: Period, firstMonth: string | null): number {
   const now = new Date()
@@ -110,24 +89,19 @@ export default function Reports() {
     setSearchParams(params, { replace: true })
   }
 
-  const { data: allTimeTrend } = useQuery({
-    queryKey: ["trend", "all"],
-    queryFn: () => api.transactions.trend("2000-01-01", todayISO()),
-  })
+  const { data: allTimeTrend } = useAllTimeTrend()
 
   const years = useMemo(() => {
     const currentYear = new Date().getFullYear()
     const present = new Set((allTimeTrend ?? []).map((point) => point.year))
-    return [...present].filter((year) => year < currentYear).sort((a, b) => b - a)
-  }, [allTimeTrend])
+    if (typeof period === "number") present.add(period)
+    return [...present].filter((year) => year < currentYear || year === period).sort((a, b) => b - a)
+  }, [allTimeTrend, period])
 
   const firstMonth = allTimeTrend?.length
     ? `${allTimeTrend[0].year}-${String(allTimeTrend[0].month).padStart(2, "0")}`
     : null
   const months = periodMonths(period, firstMonth)
-
-  const periodLabel =
-    period === "ytd" ? "Year to date" : period === "all" ? "All time" : String(period)
 
   return (
     <div className="space-y-5">
@@ -135,29 +109,7 @@ export default function Reports() {
         title="Reports"
         tabs={<PageTabs tabs={TABS} />}
         action={
-          <Select
-            value={String(period)}
-            onValueChange={(value) =>
-              setPeriod(value === "ytd" || value === "all" ? value : Number(value))
-            }
-          >
-            <SelectTrigger className="w-[170px]">
-              <Filter
-                className="size-4 shrink-0 text-muted-foreground"
-                aria-hidden
-              />
-              <SelectValue>{periodLabel}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ytd">Year to date</SelectItem>
-              {years.map((year) => (
-                <SelectItem key={year} value={String(year)}>
-                  {year}
-                </SelectItem>
-              ))}
-              <SelectItem value="all">All time</SelectItem>
-            </SelectContent>
-          </Select>
+          <PeriodFilter value={period} onChange={setPeriod} years={years} />
         }
       />
 
@@ -230,7 +182,7 @@ function CashFlowPanel({
                 <Money value={netIncome.toFixed(2)} signed />
               )
             }
-            size="lg"
+            size="md"
           />
           <Stat
             label="Net income average per month"
@@ -241,9 +193,8 @@ function CashFlowPanel({
                 <Money value={netAverage.toFixed(2)} signed />
               )
             }
-            size="lg"
+            size="md"
             className="sm:border-l sm:border-border sm:pl-4"
-            valueClassName="text-2xl xl:text-3xl"
           />
           <Stat
             label="% saving"
@@ -256,7 +207,7 @@ function CashFlowPanel({
                 `${savingRate.toFixed(1)}%`
               )
             }
-            size="lg"
+            size="md"
             className="sm:border-l sm:border-border sm:pl-4"
           />
         </CardContent>
@@ -360,7 +311,8 @@ function BreakdownPanel({
   type: TransactionType
   period: Period
   months: number
-}) {  const { start, end } = useMemo(() => periodRange(period), [period])
+}) {
+  const { start, end } = useMemo(() => periodRange(period), [period])
 
   const { data: trend } = useQuery({
     queryKey: ["trend", start, end],
@@ -484,7 +436,7 @@ function BreakdownPanel({
                 <Money value={total.toFixed(2)} />
               )
             }
-            size="lg"
+            size="md"
           />
           <Stat
             label="Average per month"
@@ -495,9 +447,8 @@ function BreakdownPanel({
                 <Money value={average.toFixed(2)} />
               )
             }
-            size="lg"
+            size="md"
             className="sm:border-l sm:border-border sm:pl-4"
-            valueClassName="text-2xl xl:text-3xl"
           />
           {!isIncome && (
             <Stat
@@ -509,7 +460,7 @@ function BreakdownPanel({
                   count
                 )
               }
-              size="lg"
+              size="md"
               className="sm:border-l sm:border-border sm:pl-4"
             />
           )}

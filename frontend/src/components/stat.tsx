@@ -14,10 +14,10 @@ interface StatProps {
 }
 
 const sizeClasses = {
-  sm: "text-lg",
-  md: "text-2xl",
-  lg: "text-3xl",
-  xl: "text-5xl",
+  sm: "text-[18px]",
+  md: "text-[26px]",
+  lg: "text-[28px]",
+  xl: "text-[32px]",
 } as const
 
 export function Stat({
@@ -34,11 +34,11 @@ export function Stat({
       <StatLabel>{label}</StatLabel>
       <span
         className={cn(
-          "font-numeric font-medium leading-tight tracking-tight",
+          "font-numeric font-[650] leading-tight tracking-tight",
           sizeClasses[size],
           tone === "positive" && "text-positive",
           tone === "negative" && "text-destructive",
-          tone === "attention" && "text-chart-2",
+          tone === "attention" && "text-chart-5",
           valueClassName,
         )}
       >

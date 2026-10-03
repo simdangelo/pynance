@@ -9,19 +9,19 @@ interface TypeToggleProps {
 }
 
 const itemClass =
-  "flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+  "flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
 
 export function TypeToggle({ value, onChange }: TypeToggleProps) {
   const income = value === "income"
   return (
-    <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
+    <div className="grid grid-cols-2 gap-1 rounded-lg bg-secondary p-1">
       <button
         type="button"
         onClick={() => onChange("income")}
         className={cn(
           itemClass,
           income
-            ? "bg-card text-positive shadow-sm"
+            ? "bg-card text-positive shadow-sm ring-1 ring-border"
             : "text-muted-foreground hover:text-foreground",
         )}
       >
@@ -33,7 +33,7 @@ export function TypeToggle({ value, onChange }: TypeToggleProps) {
         className={cn(
           itemClass,
           !income
-            ? "bg-card text-destructive shadow-sm"
+            ? "bg-card text-destructive shadow-sm ring-1 ring-border"
             : "text-muted-foreground hover:text-foreground",
         )}
       >

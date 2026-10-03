@@ -129,7 +129,7 @@ export default function Recurring() {
 
       {/* Due now — only when something is due */}
       {needsDefaultAsset && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-clay/30 bg-clay/10 px-4 py-3 text-sm text-clay">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive">
           <span>
             Choose a default asset in Settings to record recurring transactions.
           </span>
@@ -156,97 +156,110 @@ export default function Recurring() {
             <p className="p-6 text-sm text-destructive">Failed to load templates.</p>
           ) : !templates || templates.length === 0 ? (
             <EmptyState
+              className="m-4"
               icon={Repeat}
               title="No recurring templates"
               subtitle="Create a template for recurring income or expenses, then generate each occurrence when it happens."
               action={
-                <Button size="sm" onClick={openCreate}>
-                  <Plus className="mr-1 h-4 w-4" /> Add template
+                <Button
+                  variant="link"
+                  onClick={openCreate}
+                  className="underline underline-offset-4"
+                >
+                  Add template
                 </Button>
               }
             />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Frequency</TableHead>
-                  <TableHead>Next occurrence</TableHead>
-                  <TableHead className="w-[1%] text-right">Amount</TableHead>
-                  <TableHead className="w-[1%]">Status</TableHead>
-                  <TableHead className="w-[44px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {templates.map((template) => {
-                  const income =
-                    categoryType(categories, template.category_id) === "income"
-                  return (
-                    <TableRow key={template.id}>
-                      <TableCell>
-                        <span className="block max-w-[240px] truncate">
-                          {template.description}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {categoryName(categories, template.category_id)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {frequencyLabel(template.frequency, template.interval)}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          "font-numeric text-sm",
-                          template.due
-                            ? "text-destructive"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        {template.next_occurrence}
-                      </TableCell>
-                      <TableCell className="w-[1%] text-right">
-                        <Money
-                          value={
-                            income
-                              ? template.amount
-                              : (-Number(template.amount)).toFixed(2)
-                          }
-                          signed
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Frequency</TableHead>
+                    <TableHead>Next occurrence</TableHead>
+                    <TableHead className="w-[1%] text-right">Amount</TableHead>
+                    <TableHead className="w-[1%]">Status</TableHead>
+                    <TableHead className="w-[44px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {templates.map((template) => {
+                    const income =
+                      categoryType(categories, template.category_id) === "income"
+                    return (
+                      <TableRow key={template.id}>
+                        <TableCell>
+                          <span className="block max-w-[240px] truncate">
+                            {template.description}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {categoryName(categories, template.category_id)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {frequencyLabel(template.frequency, template.interval)}
+                        </TableCell>
+                        <TableCell
                           className={cn(
-                            "font-medium",
-                            income ? "text-positive" : "text-destructive",
+                            "font-numeric text-sm",
+                            template.due
+                              ? "text-destructive"
+                              : "text-muted-foreground",
                           )}
-                        />
-                      </TableCell>
-                      <TableCell className="w-[1%]">
-                        <StatusBadge template={template} />
-                      </TableCell>
-                      <TableCell className="w-[44px] text-right">
-                        <div className="flex justify-end">
-                          <RowActions label={`Actions for ${template.description}`}>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEditing(template)
-                                setDialogOpen(true)
-                              }}
-                            >
-                              <Pencil /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => setDeleteTarget(template)}
-                            >
-                              <Trash2 /> Delete
-                            </DropdownMenuItem>
-                          </RowActions>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+                        >
+                          {template.next_occurrence}
+                        </TableCell>
+                        <TableCell className="w-[1%] text-right">
+                          <Money
+                            value={
+                              income
+                                ? template.amount
+                                : (-Number(template.amount)).toFixed(2)
+                            }
+                            signed
+                            className={cn(
+                              "font-medium",
+                              income ? "text-positive" : "text-destructive",
+                            )}
+                          />
+                        </TableCell>
+                        <TableCell className="w-[1%]">
+                          <StatusBadge template={template} />
+                        </TableCell>
+                        <TableCell className="w-[44px] text-right">
+                          <div className="flex justify-end">
+                            <RowActions label={`Actions for ${template.description}`}>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditing(template)
+                                  setDialogOpen(true)
+                                }}
+                              >
+                                <Pencil /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => setDeleteTarget(template)}
+                              >
+                                <Trash2 /> Delete
+                              </DropdownMenuItem>
+                            </RowActions>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+              <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-[12.5px] text-faint-foreground">
+                <span>
+                  {(templates ?? []).length} template
+                  {(templates ?? []).length === 1 ? "" : "s"}
+                </span>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

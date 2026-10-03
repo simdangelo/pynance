@@ -4,13 +4,11 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { api } from "@/lib/api"
 import { formatCompact, monthLabel } from "@/lib/chart"
+import { periodLabel, periodRange, type Period } from "@/lib/period"
+import { useAllTimeTrend } from "@/lib/use-all-time-trend"
 import { DashboardHero, type LiquidityEntry } from "@/components/dashboard-hero"
 import { PageHeader } from "@/components/page-header"
-import {
-  TrendRangeSelector,
-  rangeToDates,
-  type TrendRange,
-} from "@/components/trend-range-selector"
+import { PeriodFilter } from "@/components/period-filter"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   ChartContainer,
@@ -20,7 +18,7 @@ import {
 } from "@/components/ui/chart"
 
 const NET_WORTH_CONFIG = {
-  amount: { label: "Net worth", color: "var(--primary)" },
+  amount: { label: "Net worth", color: "var(--foreground)" },
 } satisfies ChartConfig
 
 function greeting(date = new Date()): string {
@@ -31,7 +29,7 @@ function greeting(date = new Date()): string {
 }
 
 export default function Dashboard() {
-  const [range, setRange] = useState<TrendRange>("ALL")
+  const [period, setPeriod] = useState<Period>("all")
 
   const {
     data: allocation,
@@ -42,7 +40,15 @@ export default function Dashboard() {
     queryFn: api.assets.allocation,
   })
 
-  const { start, end } = useMemo(() => rangeToDates(range), [range])
+  const { data: allTimeTrend } = useAllTimeTrend()
+
+  const years = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    const present = new Set((allTimeTrend ?? []).map((point) => point.year))
+    return [...present].filter((year) => year < currentYear).sort((a, b) => b - a)
+  }, [allTimeTrend])
+
+  const { start, end } = useMemo(() => periodRange(period), [period])
 
   const {
     data: trend,
@@ -82,9 +88,9 @@ export default function Dashboard() {
       pct:
         ((trendData[trendData.length - 1].amount - first) / Math.abs(first)) * 100,
       sinceLabel: monthLabel(trendData[0].month),
-      range,
+      range: typeof period === "number" ? "" : periodLabel(period),
     }
-  }, [trendData, range, trendIsPlaceholder])
+  }, [trendData, period, trendIsPlaceholder])
 
   return (
     <div className="space-y-5">
@@ -101,7 +107,7 @@ export default function Dashboard() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Net worth trend</CardTitle>
-            <TrendRangeSelector value={range} onChange={setRange} />
+            <PeriodFilter value={period} onChange={setPeriod} years={years} />
           </div>
         </CardHeader>
         <CardContent>

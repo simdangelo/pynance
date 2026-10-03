@@ -67,7 +67,7 @@ function SidebarLink({
         cn(
           "relative flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors",
           isActive
-            ? "bg-primary-soft text-primary"
+            ? "bg-muted text-foreground"
             : "text-muted-foreground hover:bg-muted hover:text-foreground",
         )
       }
@@ -85,7 +85,7 @@ function SidebarLink({
         <>
           <Badge
             className={cn(
-              "ml-auto bg-primary-soft text-primary transition-opacity duration-150",
+              "ml-auto bg-destructive-soft text-destructive transition-opacity duration-150",
               expanded ? "opacity-100" : "opacity-0",
             )}
           >
@@ -93,7 +93,7 @@ function SidebarLink({
           </Badge>
           <span
             className={cn(
-              "absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary transition-opacity duration-150",
+              "absolute top-1.5 right-1.5 size-1.5 rounded-full bg-destructive transition-opacity duration-150",
               expanded ? "opacity-0" : "opacity-100",
             )}
           />

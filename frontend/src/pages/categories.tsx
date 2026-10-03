@@ -88,41 +88,51 @@ export default function Categories() {
         <CardContent className="p-0">
           {items.length === 0 ? (
             <EmptyState
+              className="m-4"
               icon={Tags}
               title={`No ${meta.label.toLowerCase()} categories yet`}
               subtitle="Add one to tag your transactions."
             />
           ) : (
-            <Table>
-              <TableHeader className="sr-only">
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell className="w-[1%] text-right">
-                      <div className="flex justify-end">
-                        <RowActions label={`Actions for ${category.name}`}>
-                          <DropdownMenuItem onClick={() => openEdit(category)}>
-                            <Pencil /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => setDeleteTarget(category)}
-                          >
-                            <Trash2 /> Delete
-                          </DropdownMenuItem>
-                        </RowActions>
-                      </div>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="w-[1%] text-right">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {items.map((category) => (
+                    <TableRow key={category.id}>
+                      <TableCell className="font-medium">{category.name}</TableCell>
+                      <TableCell className="w-[1%] text-right">
+                        <div className="flex justify-end">
+                          <RowActions label={`Actions for ${category.name}`}>
+                            <DropdownMenuItem onClick={() => openEdit(category)}>
+                              <Pencil /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => setDeleteTarget(category)}
+                            >
+                              <Trash2 /> Delete
+                            </DropdownMenuItem>
+                          </RowActions>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-[12.5px] text-faint-foreground">
+                <span>
+                  {items.length} categor{items.length === 1 ? "y" : "ies"}
+                </span>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

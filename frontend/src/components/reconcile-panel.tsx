@@ -166,7 +166,7 @@ export function ReconcilePanel() {
                       <TableRow className="bg-muted/40 hover:bg-muted/40">
                         <TableCell colSpan={5} className="py-2">
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="flex items-center gap-2 text-xs font-semibold tracking-[0.06em] uppercase">
+                            <span className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
                               <span
                                 className="size-2 rounded-full"
                                 style={{ backgroundColor: LIQUIDITY_COLOR[group.category] }}
@@ -188,8 +188,8 @@ export function ReconcilePanel() {
                                       group.difference === 0
                                         ? "text-muted-foreground"
                                         : group.difference > 0
-                                          ? "text-moss"
-                                          : "text-clay"
+                                          ? "text-positive"
+                                          : "text-destructive"
                                     }
                                   />
                                 </span>
@@ -239,8 +239,8 @@ export function ReconcilePanel() {
                                     delta === 0
                                       ? "text-muted-foreground"
                                       : delta > 0
-                                        ? "text-moss"
-                                        : "text-clay"
+                                        ? "text-positive"
+                                        : "text-destructive"
                                   }
                                 />
                               )}
@@ -265,8 +265,8 @@ export function ReconcilePanel() {
                     difference === 0
                       ? "font-medium text-muted-foreground"
                       : difference > 0
-                        ? "font-medium text-moss"
-                        : "font-medium text-clay"
+                        ? "font-medium text-positive"
+                        : "font-medium text-destructive"
                   }
                 />
               </div>
@@ -330,7 +330,7 @@ export function ReconcilePanel() {
                       value={adjustment.amount}
                       signed
                       className={
-                        Number(adjustment.amount) >= 0 ? "text-moss" : "text-clay"
+                        Number(adjustment.amount) >= 0 ? "text-positive" : "text-destructive"
                       }
                     />
                     <RowActions label="Actions for this adjustment">

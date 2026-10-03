@@ -206,12 +206,20 @@ function AccountsPanel({
           title="No assets yet"
           subtitle="Add a money pool (checking, savings, ...), pick what it is and which bucket it belongs to."
           action={
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button size="sm" onClick={() => onAddAsset()}>
-                <Plus className="mr-1 h-4 w-4" /> Add asset
+            <div className="flex flex-wrap justify-center gap-4">
+              <Button
+                variant="link"
+                onClick={() => onAddAsset()}
+                className="underline underline-offset-4"
+              >
+                Add asset
               </Button>
-              <Button size="sm" variant="outline" onClick={() => onAddBucket()}>
-                <Plus className="mr-1 h-4 w-4" /> Add bucket
+              <Button
+                variant="link"
+                onClick={() => onAddBucket()}
+                className="underline underline-offset-4"
+              >
+                Add bucket
               </Button>
             </div>
           }

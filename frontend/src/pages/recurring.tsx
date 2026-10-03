@@ -1,9 +1,11 @@
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Pencil, Plus, Repeat, Trash2 } from "lucide-react"
 
 import { api } from "@/lib/api"
+import { useAuth } from "@/lib/auth"
 import type { Category, RecurringTemplate } from "@/types/api"
 import { Money } from "@/components/money"
 import { frequencyLabel } from "@/components/frequency-label"
@@ -60,6 +62,7 @@ function categoryName(categories: Category[] | undefined, categoryId: number) {
 
 export default function Recurring() {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<RecurringTemplate | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<RecurringTemplate | null>(null)
@@ -75,6 +78,7 @@ export default function Recurring() {
   })
 
   const dueTemplates = (templates ?? []).filter((t) => t.active && t.due)
+  const needsDefaultAsset = user !== null && user.default_asset_id === null
 
   const activeCount = (templates ?? []).filter((t) => t.active).length
   const pausedCount = (templates ?? []).filter((t) => !t.active).length
@@ -124,8 +128,23 @@ export default function Recurring() {
       </Card>
 
       {/* Due now — only when something is due */}
+      {needsDefaultAsset && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-clay/30 bg-clay/10 px-4 py-3 text-sm text-clay">
+          <span>
+            Choose a default asset in Settings to record recurring transactions.
+          </span>
+          <Link to="/settings" className="font-medium underline underline-offset-2">
+            Go to Settings
+          </Link>
+        </div>
+      )}
+
       {dueTemplates.length > 0 && (
-        <DueNowCard templates={dueTemplates} categories={categories} />
+        <DueNowCard
+          templates={dueTemplates}
+          categories={categories}
+          defaultAssetMissing={needsDefaultAsset}
+        />
       )}
 
       {/* Templates */}

@@ -18,6 +18,7 @@ export type LiquidityCategory = "liquid" | "reserve" | "invested"
 export interface User {
   id: number
   email: string
+  default_asset_id: number | null
 }
 
 export interface ImportMapping {

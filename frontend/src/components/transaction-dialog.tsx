@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { Landmark } from "lucide-react"
 
 import { api } from "@/lib/api"
+import { useAuth } from "@/lib/auth"
 import { todayLocalISO } from "@/lib/utils"
 import type { Transaction, TransactionType } from "@/types/api"
 import { Money } from "@/components/money"
@@ -43,17 +44,19 @@ interface Draft {
   occurredOn: string
 }
 
-const emptyDraft = (): Draft => ({
+const emptyDraft = (assetId = ""): Draft => ({
   amount: "",
   categoryId: "",
-  assetId: "",
+  assetId,
   description: "",
   occurredOn: todayLocalISO(),
 })
 
 export function TransactionDialog({ open, onOpenChange, transaction }: TransactionDialogProps) {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const isEditing = Boolean(transaction)
+  const defaultAssetId = user?.default_asset_id ? String(user.default_asset_id) : ""
 
   const [type, setType] = useState<TransactionType>("income")
   const [drafts, setDrafts] = useState<Record<TransactionType, Draft>>({
@@ -97,10 +100,13 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
       })
     } else {
       setType("income")
-      setDrafts({ income: emptyDraft(), expense: emptyDraft() })
+      setDrafts({
+        income: emptyDraft(defaultAssetId),
+        expense: emptyDraft(defaultAssetId),
+      })
     }
     setFormError("")
-  }, [open, transaction])
+  }, [open, transaction, defaultAssetId])
 
   const income = type === "income"
 

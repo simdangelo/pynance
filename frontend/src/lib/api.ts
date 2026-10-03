@@ -119,6 +119,11 @@ export const api = {
       }),
     logout: () => request<void>("/api/auth/logout", { method: "POST" }),
     me: () => request<User>("/api/auth/me"),
+    updateMe: (data: { default_asset_id: number | null }) =>
+      request<User>("/api/auth/me", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
   },
   importData: {
     preview: (file: File, config: ImportPreviewConfig = {}) =>

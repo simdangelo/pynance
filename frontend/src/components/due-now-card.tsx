@@ -14,9 +14,11 @@ import { frequencyLabel } from "@/components/frequency-label"
 export function DueNowCard({
   templates,
   categories,
+  defaultAssetMissing,
 }: {
   templates: RecurringTemplate[]
   categories?: Category[]
+  defaultAssetMissing?: boolean
 }) {
   const queryClient = useQueryClient()
 
@@ -29,11 +31,11 @@ export function DueNowCard({
       )
     },
     onError: (error: Error) => {
-      const message =
-        error instanceof ApiError && error.status === 409
-          ? "Template is paused"
-          : "Failed to generate transaction"
-      toast.error(message)
+      if (error instanceof ApiError && error.status === 409) {
+        toast.error("Template is paused")
+        return
+      }
+      toast.error(error.message || "Failed to generate transaction")
     },
   })
 
@@ -81,7 +83,12 @@ export function DueNowCard({
                   <Button
                     size="sm"
                     onClick={() => generateMutation.mutate(template.id)}
-                    disabled={generateMutation.isPending}
+                    disabled={generateMutation.isPending || defaultAssetMissing}
+                    title={
+                      defaultAssetMissing
+                        ? "Choose a default asset in Settings first"
+                        : undefined
+                    }
                   >
                     <Play className="mr-1 h-3.5 w-3.5" /> Record
                   </Button>

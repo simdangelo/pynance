@@ -4,8 +4,8 @@ import { toast } from "sonner"
 import { FileUp, Info, Loader2, Undo2, Upload } from "lucide-react"
 
 import { api } from "@/lib/api"
+import { useAuth } from "@/lib/auth"
 import type {
-  Asset,
   ImportCommitResult,
   ImportMapping,
   ImportPreview,
@@ -87,10 +87,6 @@ const DELIMITERS = [
   { value: "|", label: "Pipe |" },
 ]
 
-function preferredAsset(assets: Asset[]): Asset | undefined {
-  return assets.find((asset) => asset.liquidity_category === "liquid")
-}
-
 function ParsingIndicator({ active }: { active: boolean }) {
   return (
     <span
@@ -120,6 +116,7 @@ function InfoHint({ text }: { text: string }) {
 
 export default function ImportData() {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [file, setFile] = useState<File | null>(null)
@@ -191,11 +188,13 @@ export default function ImportData() {
 
   useEffect(() => {
     if (assetId || !assets || assets.length === 0) return
-    const preferred = preferredAsset(assets)
+    const liquid = assets.filter((asset) => asset.liquidity_category === "liquid")
+    const preferred =
+      liquid.find((asset) => asset.id === user?.default_asset_id) ?? liquid[0]
     if (!preferred) return
     setAssetId(String(preferred.id))
     if (file) runPreview({ assetId: String(preferred.id) })
-  }, [assets, assetId, file, runPreview])
+  }, [assets, assetId, file, runPreview, user?.default_asset_id])
 
   const createCategoryMutation = useMutation({
     mutationFn: (variables: {

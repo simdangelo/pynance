@@ -14,6 +14,7 @@ import { SidebarNav } from "@/components/sidebar-nav"
 import { UserMenu } from "@/components/user-menu"
 import { Toaster } from "@/components/ui/sonner"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 
 const COLLAPSED_STORAGE_KEY = "pynance.sidebar.collapsed"
@@ -44,31 +45,39 @@ function SidebarIconLink({
   label,
   icon: Icon,
   onNavigate,
+  alert,
 }: {
   to: string
   label: string
   icon: LucideIcon
   onNavigate?: () => void
+  alert?: boolean
 }) {
   return (
     <NavLink
       to={to}
       title={label}
-      aria-label={label}
+      aria-label={alert ? `${label} (action required)` : label}
       onClick={onNavigate}
       className={({ isActive }) =>
         cn(
           iconButtonClass,
+          "relative",
           isActive && "bg-primary-soft text-primary hover:bg-primary-soft hover:text-primary",
         )
       }
     >
       <Icon className="size-[18px]" />
+      {alert && (
+        <span className="absolute top-1 right-1 size-2 rounded-full bg-clay ring-2 ring-sidebar" />
+      )}
     </NavLink>
   )
 }
 
 export function Layout() {
+  const { user } = useAuth()
+  const needsDefaultAsset = user !== null && user.default_asset_id === null
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(
     () => window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === "true",
@@ -114,7 +123,12 @@ export function Layout() {
               expanded ? "opacity-100" : "pointer-events-none opacity-0",
             )}
           >
-            <SidebarIconLink to="/settings" label="Settings" icon={Settings} />
+            <SidebarIconLink
+              to="/settings"
+              label="Settings"
+              icon={Settings}
+              alert={needsDefaultAsset}
+            />
             <button
               type="button"
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -169,6 +183,7 @@ export function Layout() {
                   to="/settings"
                   label="Settings"
                   icon={Settings}
+                  alert={needsDefaultAsset}
                   onNavigate={() => setDrawerOpen(false)}
                 />
                 <Button

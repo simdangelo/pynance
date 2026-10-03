@@ -96,13 +96,13 @@ export default function Reports() {
   const periodParam = searchParams.get("period")
   const period: Period = /^\d{4}$/.test(periodParam ?? "")
     ? Number(periodParam)
-    : periodParam === "all"
-      ? "all"
-      : "ytd"
+    : periodParam === "ytd"
+      ? "ytd"
+      : "all"
 
   const setPeriod = (next: Period) => {
     const params = new URLSearchParams(searchParams)
-    if (next === "ytd") {
+    if (next === "all") {
       params.delete("period")
     } else {
       params.set("period", String(next))

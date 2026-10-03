@@ -39,8 +39,8 @@ export function AllocationTree({
 
   return (
     <Card className="gap-0 overflow-hidden py-0">
-      {groups.map((group) => (
-        <div key={group.category}>
+      {groups.map((group, index) => (
+        <div key={group.category} className={cn(index > 0 && "mt-3")}>
           <div
             className={cn(rowGrid, "border-l-4 py-2.5 pr-4 pl-4")}
             style={{

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react"
+import { Copy, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react"
 
 import { api } from "@/lib/api"
 import { dateLabel } from "@/lib/period"
@@ -39,7 +39,16 @@ export default function Transactions() {
   const [categoryId, setCategoryId] = useState<number | "all">("all")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Transaction | null>(null)
+  const [duplicating, setDuplicating] = useState<Transaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
+
+  const closeDialog = (open: boolean) => {
+    setDialogOpen(open)
+    if (!open) {
+      setEditing(null)
+      setDuplicating(null)
+    }
+  }
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["summary", year, month],
@@ -108,6 +117,7 @@ export default function Transactions() {
           <Button
             onClick={() => {
               setEditing(null)
+              setDuplicating(null)
               setDialogOpen(true)
             }}
           >
@@ -275,10 +285,20 @@ export default function Transactions() {
                               <DropdownMenuItem
                                 onClick={() => {
                                   setEditing(t)
+                                  setDuplicating(null)
                                   setDialogOpen(true)
                                 }}
                               >
                                 <Pencil /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditing(null)
+                                  setDuplicating(t)
+                                  setDialogOpen(true)
+                                }}
+                              >
+                                <Copy /> Duplicate
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
@@ -307,8 +327,9 @@ export default function Transactions() {
 
       <TransactionDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={closeDialog}
         transaction={editing}
+        duplicateOf={duplicating}
       />
 
       <ConfirmDialog

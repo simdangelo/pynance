@@ -34,6 +34,7 @@ interface TransactionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   transaction?: Transaction | null
+  duplicateOf?: Transaction | null
 }
 
 interface Draft {
@@ -52,10 +53,17 @@ const emptyDraft = (assetId = ""): Draft => ({
   occurredOn: todayLocalISO(),
 })
 
-export function TransactionDialog({ open, onOpenChange, transaction }: TransactionDialogProps) {
+export function TransactionDialog({
+  open,
+  onOpenChange,
+  transaction,
+  duplicateOf,
+}: TransactionDialogProps) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const isEditing = Boolean(transaction)
+  const isDuplicating = !isEditing && Boolean(duplicateOf)
+  const source = transaction ?? duplicateOf
   const defaultAssetId = user?.default_asset_id ? String(user.default_asset_id) : ""
 
   const [type, setType] = useState<TransactionType>("income")
@@ -83,19 +91,19 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
   useEffect(() => {
     if (!open) return
 
-    // A new transaction starts from a clean slate for both types; editing
-    // seeds only the draft of the transaction's own type.
-    if (transaction) {
-      setType(transaction.transaction_type)
+    // A new transaction starts from a clean slate for both types; editing and
+    // duplicating seed only the draft of the source transaction's own type.
+    if (source) {
+      setType(source.transaction_type)
       setDrafts({
         income: emptyDraft(),
         expense: emptyDraft(),
-        [transaction.transaction_type]: {
-          amount: transaction.amount,
-          categoryId: String(transaction.category_id),
-          assetId: String(transaction.asset_id),
-          description: transaction.description,
-          occurredOn: transaction.occurred_on,
+        [source.transaction_type]: {
+          amount: source.amount,
+          categoryId: String(source.category_id),
+          assetId: String(source.asset_id),
+          description: source.description,
+          occurredOn: isDuplicating ? todayLocalISO() : source.occurred_on,
         },
       })
     } else {
@@ -106,7 +114,7 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
       })
     }
     setFormError("")
-  }, [open, transaction, defaultAssetId])
+  }, [open, source, isDuplicating, defaultAssetId])
 
   const income = type === "income"
 
@@ -170,11 +178,19 @@ export function TransactionDialog({ open, onOpenChange, transaction }: Transacti
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit transaction" : "Add transaction"}</DialogTitle>
+          <DialogTitle>
+            {isEditing
+              ? "Edit transaction"
+              : isDuplicating
+                ? "Duplicate transaction"
+                : "Add transaction"}
+          </DialogTitle>
           <DialogDescription>
             {isEditing
               ? "Update the details of this transaction."
-              : "Record a new income or expense."}
+              : isDuplicating
+                ? "Adjust the details and save it as a new transaction."
+                : "Record a new income or expense."}
           </DialogDescription>
         </DialogHeader>
 

@@ -75,12 +75,13 @@ can be configured:
 
 ```bash
 cd backend
-uv run pytest        # tests against a real Postgres test database
-uv run ruff check .  # lint
-uv run mypy .        # type check
+uv run pytest              # tests against a real Postgres test database
+uv run ruff check .        # lint
+uv run mypy .              # type check
+uv run alembic check       # models vs migrations drift (DB must be at head)
 ```
 
-The CI workflow (`.github/workflows/ci.yml`) runs all three on every push
+The CI workflow (`.github/workflows/ci.yml`) runs all of these on every push
 and pull request.
 
 ## Demo data (optional)

@@ -1,9 +1,8 @@
 """Generate realistic fake data for one user (local/demo use only).
 
-Shared by the seed script (`scripts/seed_demo_data.py`) and the dev-only
-"generate fake transactions" endpoint. It only touches the given user's rows:
-movements are reset and rebuilt, categories/assets/buckets/templates are
-created when missing and reused otherwise.
+Used by the seed script (`scripts/seed_demo_data.py`). It only touches the
+given user's rows: movements are reset and rebuilt, categories/assets/buckets/
+templates are created when missing and reused otherwise.
 
 The generator is deliberately irregular: yearly raises, occasional months
 without salary, rent jumps, seasonal spending and one-off events, so charts

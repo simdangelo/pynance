@@ -26,7 +26,10 @@ def create_recurring_template(
     db: Session, user_id: int, recurring_template: RecurringTemplateCreate
 ) -> RecurringTemplate:
     category = db.execute(
-        select(Category.id).where(Category.id == recurring_template.category_id)
+        select(Category.id).where(
+            Category.id == recurring_template.category_id,
+            Category.user_id == user_id,
+        )
     ).scalar_one_or_none()
     if not category:
         raise CategoryNotFoundError(
@@ -97,7 +100,10 @@ def update_recurring_template(
         )
     if update.category_id is not None:
         category = db.execute(
-            select(Category).where(Category.id == update.category_id)
+            select(Category).where(
+                Category.id == update.category_id,
+                Category.user_id == user_id,
+            )
         ).scalar_one_or_none()
         if category is None:
             raise CategoryNotFoundError(f"Category with id '{update.category_id}' doesn't exist")

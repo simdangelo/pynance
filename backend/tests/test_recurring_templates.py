@@ -2,7 +2,13 @@ from datetime import UTC, date, datetime
 
 from fastapi.testclient import TestClient
 
-from tests.conftest import create_asset, create_category, create_recurring_template
+from tests.conftest import (
+    create_asset,
+    create_category,
+    create_recurring_template,
+    create_user,
+    login,
+)
 
 
 def test_create_recurring_template(client: TestClient) -> None:
@@ -311,6 +317,59 @@ def test_due_flag(client: TestClient) -> None:
     assert by_description["Past due"]["due"] is True
     assert by_description["Due today"]["due"] is True
     assert by_description["Future"]["due"] is False
+
+
+def test_create_template_with_another_users_category_returns_404(
+    anon_client: TestClient,
+) -> None:
+    create_user(anon_client, "alice@example.com")
+    login(anon_client, "alice@example.com")
+    alice_category = create_category(anon_client, "groceries", "expense")
+
+    create_user(anon_client, "bob@example.com")
+    login(anon_client, "bob@example.com")
+
+    response = anon_client.post(
+        "/api/recurring-template",
+        json={
+            "description": "Rent",
+            "amount": "500.00",
+            "category_id": alice_category["id"],
+            "frequency": "monthly",
+            "interval": 1,
+            "next_occurrence": "2026-09-01",
+            "active": True,
+        },
+    )
+
+    assert response.status_code == 404
+
+
+def test_update_template_to_another_users_category_returns_404(
+    anon_client: TestClient,
+) -> None:
+    create_user(anon_client, "alice@example.com")
+    login(anon_client, "alice@example.com")
+    alice_category = create_category(anon_client, "groceries", "expense")
+
+    create_user(anon_client, "bob@example.com")
+    login(anon_client, "bob@example.com")
+    bob_category = create_category(anon_client, "bob groceries", "expense")
+    template = create_recurring_template(
+        anon_client,
+        description="Rent",
+        amount="500.00",
+        category_id=bob_category["id"],
+        frequency="monthly",
+        next_occurrence="2026-09-01",
+    )
+
+    response = anon_client.patch(
+        f"/api/recurring-template/{template['id']}",
+        json={"category_id": alice_category["id"]},
+    )
+
+    assert response.status_code == 404
 
 
 def test_monthly_generation_clamps_end_of_month(client: TestClient, liquid_asset: int) -> None:

@@ -73,6 +73,7 @@ export interface Category {
   id: number
   name: string
   transaction_type: TransactionType
+  exclude_from_reports: boolean
   created_at: string
 }
 

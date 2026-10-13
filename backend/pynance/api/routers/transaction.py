@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from pynance.api.dependencies import CurrentUser
@@ -86,9 +86,13 @@ def get_trend(
     start_date: date,
     end_date: date,
     db: Annotated[Session, Depends(get_db)],
+    exclude_category_id: Annotated[list[int] | None, Query()] = None,
 ) -> list[transaction_service.TrendPoint]:
     return transaction_service.get_trend(
-        db, current_user.id, date_range=transaction_service.DataRange(start_date, end_date)
+        db,
+        current_user.id,
+        date_range=transaction_service.DataRange(start_date, end_date),
+        excluded_category_ids=exclude_category_id,
     )
 
 
@@ -98,9 +102,13 @@ def get_trend_by_category(
     start_date: date,
     end_date: date,
     db: Annotated[Session, Depends(get_db)],
+    exclude_category_id: Annotated[list[int] | None, Query()] = None,
 ) -> list[transaction_service.TrendByCategory]:
     return transaction_service.get_trend_by_category(
-        db, current_user.id, date_range=transaction_service.DataRange(start_date, end_date)
+        db,
+        current_user.id,
+        date_range=transaction_service.DataRange(start_date, end_date),
+        excluded_category_ids=exclude_category_id,
     )
 
 

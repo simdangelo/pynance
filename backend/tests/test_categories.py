@@ -141,3 +141,30 @@ def test_update_category_not_found_returns_404(client: TestClient) -> None:
     response = client.patch("/api/categories/9999", json={"name": "food"})
 
     assert response.status_code == 404
+
+
+def test_create_category_is_included_in_reports_by_default(client: TestClient) -> None:
+    category = client.post(
+        "/api/categories",
+        json={"name": "groceries", "transaction_type": "expense"},
+    ).json()
+
+    assert category["exclude_from_reports"] is False
+
+
+def test_update_category_exclude_from_reports(client: TestClient) -> None:
+    category = client.post(
+        "/api/categories",
+        json={"name": "donation", "transaction_type": "income"},
+    ).json()
+
+    response = client.patch(
+        f"/api/categories/{category['id']}",
+        json={"exclude_from_reports": True},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["exclude_from_reports"] is True
+
+    listed = client.get("/api/categories").json()
+    assert listed[0]["exclude_from_reports"] is True

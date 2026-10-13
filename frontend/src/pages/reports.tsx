@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { Navigate, Route, Routes, useSearchParams } from "react-router-dom"
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Bar,
   BarChart,
@@ -23,6 +23,7 @@ import { Money } from "@/components/money"
 import { PageHeader } from "@/components/page-header"
 import { PageTabs } from "@/components/page-tabs"
 import { PeriodFilter } from "@/components/period-filter"
+import { ReportCategoryFilter } from "@/components/report-category-filter"
 import { Stat } from "@/components/stat"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -72,6 +73,7 @@ function periodMonths(period: Period, firstMonth: string | null): number {
 
 export default function Reports() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
   const periodParam = searchParams.get("period")
   const period: Period = /^\d{4}$/.test(periodParam ?? "")
     ? Number(periodParam)
@@ -89,7 +91,36 @@ export default function Reports() {
     setSearchParams(params, { replace: true })
   }
 
-  const { data: allTimeTrend } = useAllTimeTrend()
+  const { data: categories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: api.categories.list,
+  })
+
+  const excludedCategoryIds = useMemo(
+    () =>
+      (categories ?? [])
+        .filter((category) => category.exclude_from_reports)
+        .map((category) => category.id),
+    [categories],
+  )
+
+  const { data: allTimeTrend } = useAllTimeTrend(excludedCategoryIds)
+
+  const toggleCategory = useMutation({
+    mutationFn: ({ categoryId, included }: { categoryId: number; included: boolean }) =>
+      api.categories.update(categoryId, { exclude_from_reports: !included }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["categories"] }),
+  })
+
+  const resetCategories = useMutation({
+    mutationFn: () =>
+      Promise.all(
+        (categories ?? [])
+          .filter((category) => category.exclude_from_reports)
+          .map((category) => api.categories.update(category.id, { exclude_from_reports: false })),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["categories"] }),
+  })
 
   const years = useMemo(() => {
     const currentYear = new Date().getFullYear()
@@ -109,7 +140,16 @@ export default function Reports() {
         title="Reports"
         tabs={<PageTabs tabs={TABS} />}
         action={
-          <PeriodFilter value={period} onChange={setPeriod} years={years} />
+          <div className="flex items-center gap-2">
+            <ReportCategoryFilter
+              categories={categories ?? []}
+              onToggle={(categoryId, included) =>
+                toggleCategory.mutate({ categoryId, included })
+              }
+              onReset={() => resetCategories.mutate()}
+            />
+            <PeriodFilter value={period} onChange={setPeriod} years={years} />
+          </div>
         }
       />
 
@@ -117,18 +157,34 @@ export default function Reports() {
         <Route index element={<Navigate to="cash-flow" replace />} />
         <Route
           path="cash-flow"
-          element={<CashFlowPanel period={period} months={months} />}
+          element={
+            <CashFlowPanel
+              period={period}
+              months={months}
+              excludedCategoryIds={excludedCategoryIds}
+            />
+          }
         />
         <Route
           path="spending"
           element={
-            <BreakdownPanel type="expense" period={period} months={months} />
+            <BreakdownPanel
+              type="expense"
+              period={period}
+              months={months}
+              excludedCategoryIds={excludedCategoryIds}
+            />
           }
         />
         <Route
           path="income"
           element={
-            <BreakdownPanel type="income" period={period} months={months} />
+            <BreakdownPanel
+              type="income"
+              period={period}
+              months={months}
+              excludedCategoryIds={excludedCategoryIds}
+            />
           }
         />
         <Route path="*" element={<Navigate to="cash-flow" replace />} />
@@ -140,15 +196,17 @@ export default function Reports() {
 function CashFlowPanel({
   period,
   months,
+  excludedCategoryIds,
 }: {
   period: Period
   months: number
+  excludedCategoryIds: number[]
 }) {
   const { start, end } = useMemo(() => periodRange(period), [period])
 
   const { data: trend, isLoading, isError } = useQuery({
-    queryKey: ["trend", start, end],
-    queryFn: () => api.transactions.trend(start, end),
+    queryKey: ["trend", start, end, excludedCategoryIds],
+    queryFn: () => api.transactions.trend(start, end, excludedCategoryIds),
     placeholderData: keepPreviousData,
   })
 
@@ -307,22 +365,24 @@ function BreakdownPanel({
   type,
   period,
   months,
+  excludedCategoryIds,
 }: {
   type: TransactionType
   period: Period
   months: number
+  excludedCategoryIds: number[]
 }) {
   const { start, end } = useMemo(() => periodRange(period), [period])
 
   const { data: trend } = useQuery({
-    queryKey: ["trend", start, end],
-    queryFn: () => api.transactions.trend(start, end),
+    queryKey: ["trend", start, end, excludedCategoryIds],
+    queryFn: () => api.transactions.trend(start, end, excludedCategoryIds),
     placeholderData: keepPreviousData,
   })
 
   const { data: byCategory, isLoading, isError } = useQuery({
-    queryKey: ["trend-by-category", start, end],
-    queryFn: () => api.transactions.trendByCategory(start, end),
+    queryKey: ["trend-by-category", start, end, excludedCategoryIds],
+    queryFn: () => api.transactions.trendByCategory(start, end, excludedCategoryIds),
     placeholderData: keepPreviousData,
   })
 

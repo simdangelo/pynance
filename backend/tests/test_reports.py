@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from tests.conftest import create_category, create_transaction
+from tests.conftest import create_category, create_transaction, create_user, login
 
 
 def test_monthly_summary(client: TestClient) -> None:
@@ -227,6 +227,185 @@ def test_trend_by_category_empty_range(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_trend_excludes_category(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    donation = create_category(client, "donation", "income")
+    create_transaction(
+        client,
+        amount="10.00",
+        category_id=groceries["id"],
+        description="food",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        amount="5000.00",
+        category_id=donation["id"],
+        description="family donation",
+        occurred_on="2026-08-02",
+    )
+    create_transaction(
+        client,
+        amount="20.00",
+        category_id=groceries["id"],
+        description="more food",
+        occurred_on="2026-09-01",
+    )
+
+    response = client.get(
+        "/api/transactions/trend",
+        params=[
+            ("start_date", "2026-08-01"),
+            ("end_date", "2026-09-30"),
+            ("exclude_category_id", donation["id"]),
+        ],
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    by_month = {(point["year"], point["month"]): point for point in data}
+    assert by_month[(2026, 8)]["income"] == "0"
+    assert by_month[(2026, 8)]["expense"] == "10.00"
+    assert by_month[(2026, 8)]["count"] == 1
+    assert by_month[(2026, 9)]["expense"] == "20.00"
+    assert by_month[(2026, 9)]["count"] == 1
+
+
+def test_trend_excludes_multiple_categories(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    donation = create_category(client, "donation", "income")
+    salary = create_category(client, "salary", "income")
+    create_transaction(
+        client,
+        amount="10.00",
+        category_id=groceries["id"],
+        description="food",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        amount="5000.00",
+        category_id=donation["id"],
+        description="family donation",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        amount="100.00",
+        category_id=salary["id"],
+        description="salary",
+        occurred_on="2026-08-01",
+    )
+
+    response = client.get(
+        "/api/transactions/trend",
+        params=[
+            ("start_date", "2026-08-01"),
+            ("end_date", "2026-08-31"),
+            ("exclude_category_id", donation["id"]),
+            ("exclude_category_id", salary["id"]),
+        ],
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["income"] == "0"
+    assert data[0]["expense"] == "10.00"
+    assert data[0]["count"] == 1
+
+
+def test_trend_without_exclusions_includes_everything(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    donation = create_category(client, "donation", "income")
+    create_transaction(
+        client,
+        amount="10.00",
+        category_id=groceries["id"],
+        description="food",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        amount="5000.00",
+        category_id=donation["id"],
+        description="family donation",
+        occurred_on="2026-08-01",
+    )
+
+    response = client.get("/api/transactions/trend?start_date=2026-08-01&end_date=2026-08-31")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data[0]["income"] == "5000.00"
+    assert data[0]["expense"] == "10.00"
+    assert data[0]["count"] == 2
+
+
+def test_trend_by_category_omits_excluded_category(client: TestClient) -> None:
+    groceries = create_category(client, "groceries", "expense")
+    donation = create_category(client, "donation", "income")
+    create_transaction(
+        client,
+        amount="10.00",
+        category_id=groceries["id"],
+        description="food",
+        occurred_on="2026-08-01",
+    )
+    create_transaction(
+        client,
+        amount="5000.00",
+        category_id=donation["id"],
+        description="family donation",
+        occurred_on="2026-08-02",
+    )
+
+    response = client.get(
+        "/api/transactions/trend-by-category",
+        params=[
+            ("start_date", "2026-08-01"),
+            ("end_date", "2026-08-31"),
+            ("exclude_category_id", donation["id"]),
+        ],
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["category_name"] == "groceries"
+
+
+def test_trend_ignores_another_users_category(anon_client: TestClient) -> None:
+    create_user(anon_client, "alice@example.com")
+    login(anon_client, "alice@example.com")
+    alice_category = create_category(anon_client, "alice stuff", "expense")
+
+    create_user(anon_client, "bob@example.com")
+    login(anon_client, "bob@example.com")
+    bob_category = create_category(anon_client, "bob stuff", "expense")
+    create_transaction(
+        anon_client,
+        amount="10.00",
+        category_id=bob_category["id"],
+        description="bob food",
+        occurred_on="2026-08-01",
+    )
+
+    response = anon_client.get(
+        "/api/transactions/trend",
+        params=[
+            ("start_date", "2026-08-01"),
+            ("end_date", "2026-08-31"),
+            ("exclude_category_id", alice_category["id"]),
+        ],
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data[0]["expense"] == "10.00"
+    assert data[0]["count"] == 1
 
 
 def test_comparison(client: TestClient) -> None:

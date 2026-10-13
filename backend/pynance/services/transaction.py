@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -242,9 +243,22 @@ class TrendPoint:
     count: int
 
 
-def get_trend(db: Session, user_id: int, date_range: DataRange) -> list[TrendPoint]:
+def get_trend(
+    db: Session,
+    user_id: int,
+    date_range: DataRange,
+    excluded_category_ids: Sequence[int] | None = None,
+) -> list[TrendPoint]:
     year_expr = func.extract("year", Transaction.occurred_on)
     month_expr = func.extract("month", Transaction.occurred_on)
+
+    conditions: list[ColumnElement[bool]] = [
+        Transaction.user_id == user_id,
+        Transaction.occurred_on >= date_range.start_date,
+        Transaction.occurred_on <= date_range.end_date,
+    ]
+    if excluded_category_ids:
+        conditions.append(Transaction.category_id.not_in(excluded_category_ids))
 
     rows = db.execute(
         select(
@@ -255,11 +269,7 @@ def get_trend(db: Session, user_id: int, date_range: DataRange) -> list[TrendPoi
             func.count(Transaction.id),
         )
         .join(Category, Category.id == Transaction.category_id)
-        .where(
-            Transaction.user_id == user_id,
-            Transaction.occurred_on >= date_range.start_date,
-            Transaction.occurred_on <= date_range.end_date,
-        )
+        .where(*conditions)
         .group_by(year_expr, month_expr, Category.transaction_type)
         .order_by(year_expr, month_expr, Category.transaction_type)
     ).all()
@@ -302,19 +312,26 @@ class TrendByCategory:
 
 
 def get_trend_by_category(
-    db: Session, user_id: int, date_range: DataRange
+    db: Session,
+    user_id: int,
+    date_range: DataRange,
+    excluded_category_ids: Sequence[int] | None = None,
 ) -> list[TrendByCategory]:
     year_expr = func.extract("year", Transaction.occurred_on)
     month_expr = func.extract("month", Transaction.occurred_on)
 
+    conditions: list[ColumnElement[bool]] = [
+        Transaction.user_id == user_id,
+        Transaction.occurred_on >= date_range.start_date,
+        Transaction.occurred_on <= date_range.end_date,
+    ]
+    if excluded_category_ids:
+        conditions.append(Transaction.category_id.not_in(excluded_category_ids))
+
     rows = db.execute(
         select(Category.id, Category.name, year_expr, month_expr, func.sum(Transaction.amount))
         .join(Category, Category.id == Transaction.category_id)
-        .where(
-            Transaction.user_id == user_id,
-            Transaction.occurred_on >= date_range.start_date,
-            Transaction.occurred_on <= date_range.end_date,
-        )
+        .where(*conditions)
         .group_by(Category.id, Category.name, year_expr, month_expr)
         .order_by(Category.id, Category.name, year_expr, month_expr)
     ).all()

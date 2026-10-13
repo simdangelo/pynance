@@ -22,6 +22,7 @@ class CategoryCreate(CategoryBase):
 class CategoryUpdate(BaseModel):
     name: str | None = None
     transaction_type: TransactionType | None = None
+    exclude_from_reports: bool | None = None
 
 
 # 4. Schema per la RISPOSTA (output, es. GET o dopo la create)
@@ -29,5 +30,6 @@ class CategoryUpdate(BaseModel):
 class CategoryResponse(CategoryBase):
     id: int
     created_at: datetime
+    exclude_from_reports: bool
 
     model_config = ConfigDict(from_attributes=True)

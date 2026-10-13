@@ -69,6 +69,18 @@ function toQueryString(params: Record<string, string | number | undefined>): str
   return qs ? `?${qs}` : ""
 }
 
+function trendQueryString(
+  startDate: string,
+  endDate: string,
+  excludeCategoryIds: number[],
+): string {
+  const search = new URLSearchParams({ start_date: startDate, end_date: endDate })
+  for (const id of excludeCategoryIds) {
+    search.append("exclude_category_id", String(id))
+  }
+  return `?${search.toString()}`
+}
+
 interface ImportPreviewConfig {
   mapping?: ImportMapping | null
   dateFormat?: string
@@ -146,7 +158,7 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    update: (id: number, data: { name?: string; transaction_type?: string }) =>
+    update: (id: number, data: { name?: string; transaction_type?: string; exclude_from_reports?: boolean }) =>
       request<Category>(`/api/categories/${id}`, {
         method: "PATCH",
         body: JSON.stringify(data),
@@ -199,13 +211,13 @@ export const api = {
           category_id: filters.category_id,
         })}`,
       ),
-    trend: (startDate: string, endDate: string) =>
+    trend: (startDate: string, endDate: string, excludeCategoryIds: number[] = []) =>
       request<TrendPoint[]>(
-        `/api/transactions/trend?start_date=${startDate}&end_date=${endDate}`,
+        `/api/transactions/trend${trendQueryString(startDate, endDate, excludeCategoryIds)}`,
       ),
-    trendByCategory: (startDate: string, endDate: string) =>
+    trendByCategory: (startDate: string, endDate: string, excludeCategoryIds: number[] = []) =>
       request<TrendByCategory[]>(
-        `/api/transactions/trend-by-category?start_date=${startDate}&end_date=${endDate}`,
+        `/api/transactions/trend-by-category${trendQueryString(startDate, endDate, excludeCategoryIds)}`,
       ),
     comparison: (year: number, month: number, filters: { category_id?: number; transaction_type?: string } = {}) =>
       request<Comparison>(

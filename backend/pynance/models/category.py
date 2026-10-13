@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pynance.database import Base
@@ -15,6 +15,11 @@ class Category(Base):
     transaction_type: Mapped[TransactionType] = mapped_column(
         Enum(TransactionType),
         nullable=False,
+    )
+    exclude_from_reports: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

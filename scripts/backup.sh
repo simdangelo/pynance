@@ -7,7 +7,9 @@ cd "$(dirname "$0")/.."
 
 BACKUP_DIR="${BACKUP_DIR:-/opt/pynance/backups}"
 KEEP="${KEEP:-7}"
-STAMP="$(date +%F)"
+# Date and time: deploys can run more than once a day and each pre-deploy
+# backup must survive the next one.
+STAMP="$(date +%F_%H%M%S)"
 
 mkdir -p "$BACKUP_DIR"
 

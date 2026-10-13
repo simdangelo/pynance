@@ -177,8 +177,8 @@ serve anche il frontend), bot Telegram e reverse proxy.
 docker compose --profile bot up -d --build
 ```
 
-Dopo il primo deploy, per aggiornare l'app basta un comando (pull + rebuild +
-restart):
+Dopo il primo deploy, per aggiornare l'app basta un comando (backup del
+database + pull + rebuild + restart):
 
 ```bash
 ./scripts/deploy.sh
@@ -187,6 +187,8 @@ restart):
 - Il database non espone porte all'esterno (rete privata di compose).
 - Caddy emette e rinnova i certificati Let's Encrypt per `DOMAIN`.
 - Il bot è opzionale (`--profile bot`): si aggiunge/toglie senza toccare il resto.
+- `scripts/deploy.sh` esegue `scripts/backup.sh` **prima** di ogni deploy (se il
+  backup fallisce, il deploy si ferma; `SKIP_BACKUP=1` lo salta in emergenza).
 - Backup giornaliero: cron sul host che lancia `scripts/backup.sh`
   (pg_dump → gzip → rotazione ultime 7). Ripristino: `scripts/restore.sh <file>`.
 

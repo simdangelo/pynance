@@ -55,14 +55,20 @@ VPS section below).
 
 ## Configuration
 
-All configuration is via environment variables (see `.env.example`):
+All configuration reaches the application as environment variables. In local
+development they are read from `.env`; in the Docker Compose stack some are
+injected directly by `docker-compose.yaml` (for example `POSTGRES_HOST=db`,
+`SECURE_COOKIES=true`, and `ALLOWED_HOSTS` derived from `DOMAIN`); on a PaaS
+the platform provides them. `.env.example` is the catalog of everything that
+can be configured:
 
 | Variable | Description |
 |---|---|
 | `POSTGRES_*` | Database connection parts for local development |
-| `DATABASE_URL` | Single connection string; wins over `POSTGRES_*` when set (used in production) |
-| `SECURE_COOKIES` | `true` in production (HTTPS) so the session cookie is `Secure` |
-| `ALLOWED_HOSTS` | JSON list of accepted Host headers (TrustedHostMiddleware) |
+| `DATABASE_URL` | Single connection string; wins over `POSTGRES_*` when set (used on a PaaS) |
+| `DOMAIN` | Domain Caddy serves and Let's Encrypt validates (VPS deploy; read by Compose) |
+| `SECURE_COOKIES` | `true` in production (HTTPS) so the session cookie is `Secure`; set by Compose on the VPS |
+| `ALLOWED_HOSTS` | JSON list of accepted Host headers (TrustedHostMiddleware); derived from `DOMAIN` by Compose on the VPS |
 | `TELEGRAM_BOT_TOKEN` | Token of the optional Telegram bot |
 
 ## Tests & checks
